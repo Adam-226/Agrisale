@@ -1,0 +1,87 @@
+name: Flutter Multi-Platform Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: 🎉 Multi-Platform Build
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          architecture: x64
+
+      - run: flutter pub get
+
+    # ---------------- iOS Build ----------------
+      - run: pod repo update
+        working-directory: ios
+
+      - run: flutter build ios --release --no-codesign
+
+      - run: mkdir Payload
+        working-directory: build/ios/iphoneos
+
+      - run: mv Runner.app Payload
+        working-directory: build/ios/iphoneos
+
+      - name: Zip iOS IPA
+        run: zip -qq -r -9 agrisale-ios.ipa Payload
+        working-directory: build/ios/iphoneos
+
+    # ---------------- Android Build ----------------
+      - run: flutter build apk --release
+
+      - name: Rename Android APK
+        run: mv build/app/outputs/flutter-apk/app-release.apk agrisale-android.apk
+
+    # ---------------- macOS Build ----------------
+      - run: flutter build macos --release
+
+      - name: Zip macOS app
+        run: zip -qq -r -9 agrisale-macos.zip build/macos/Build/Products/Release/agrisale.app
+
+    # ---------------- Windows Build ----------------
+      - run: flutter build windows --release
+
+      - name: Zip Windows app
+        run: zip -qq -r -9 agrisale-windows.zip build/windows/runner/Release
+
+    # ---------------- Upload to GitHub Release ----------------
+      - name: Upload iOS IPA
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: build/ios/iphoneos/agrisale-ios.ipa
+          tag: v1.0.0
+          overwrite: true
+          body: "First Multi-Platform Release"
+
+      - name: Upload Android APK
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: agrisale-android.apk
+          tag: v1.0.0
+          overwrite: true
+
+      - name: Upload macOS ZIP
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: agrisale-macos.zip
+          tag: v1.0.0
+          overwrite: true
+
+      - name: Upload Windows ZIP
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: agrisale-windows.zip
+          tag: v1.0.0
+          overwrite: true
