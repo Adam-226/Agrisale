@@ -1,3 +1,3 @@
-name: agrisale
-version: 2.7
+name:Agrisale
+version: 1.0.0
 description: A Flutter app for agricultural sales management.
