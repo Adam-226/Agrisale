@@ -1,7 +1,10 @@
 // lib/database_helper.dart
 
+import 'dart:io';
 import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -17,7 +20,28 @@ class DatabaseHelper {
   }
 
   Future<Database> _initDatabase() async {
-    String path = join(await getDatabasesPath(), 'agriculture_management.db');
+    // Windows桌面平台需要初始化databaseFactory
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      // 为桌面平台设置数据库工厂
+      databaseFactory = databaseFactoryFfi;
+    }
+    
+    String path;
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      // 桌面平台使用应用数据目录
+      final appDocumentsDirectory = await getApplicationDocumentsDirectory();
+      path = join(appDocumentsDirectory.path, 'agrisale', 'agriculture_management.db');
+      
+      // 确保目录存在
+      final directory = Directory(dirname(path));
+      if (!await directory.exists()) {
+        await directory.create(recursive: true);
+      }
+    } else {
+      // 移动平台使用默认数据库路径
+      path = join(await getDatabasesPath(), 'agriculture_management.db');
+    }
+    
     return await openDatabase(
       path,
       version: 4, // 更新版本号以触发数据库结构更新

@@ -1,6 +1,8 @@
 // lib/main.dart
 
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
 import 'screens/product_screen.dart';
@@ -18,7 +20,17 @@ import 'screens/supplier_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/data_assistant_screen.dart';
 
-void main() => runApp(MyApp());
+void main() {
+  // 为桌面平台初始化SQLite
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    // 初始化FFI
+    sqfliteFfiInit();
+    // 设置全局数据库工厂
+    databaseFactory = databaseFactoryFfi;
+  }
+  
+  runApp(MyApp());
+}
 
 class MyApp extends StatelessWidget {
   @override
