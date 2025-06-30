@@ -910,8 +910,8 @@ class TotalSalesTableScreen extends StatelessWidget {
     csvData += '净数量,${totalQuantity}\n';
     csvData += '净收入,${totalPrice.toStringAsFixed(2)}\n';
 
-    if (Platform.isMacOS) {
-      // macOS: 使用 file_picker 让用户选择保存位置
+    if (Platform.isMacOS || Platform.isWindows) {
+      // macOS 和 Windows: 使用 file_picker 让用户选择保存位置
       String? selectedPath = await FilePicker.platform.saveFile(
         dialogTitle: '保存总销售报告',
         fileName: 'total_sales_report.csv',

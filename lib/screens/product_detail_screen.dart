@@ -415,8 +415,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     csvData += '退货总额,-¥${_returnAmount.toStringAsFixed(2)}\n';
     csvData += '净收益,¥${(_saleAmount - _purchaseAmount - _returnAmount).toStringAsFixed(2)}\n';
 
-    if (Platform.isMacOS) {
-      // macOS: 使用 file_picker 让用户选择保存位置
+    if (Platform.isMacOS || Platform.isWindows) {
+      // macOS 和 Windows: 使用 file_picker 让用户选择保存位置
       String? selectedPath = await FilePicker.platform.saveFile(
         dialogTitle: '保存产品详情报告',
         fileName: 'product_${widget.product['name']}_report.csv',

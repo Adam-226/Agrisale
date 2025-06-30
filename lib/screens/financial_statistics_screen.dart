@@ -269,8 +269,8 @@ class _FinancialStatisticsScreenState extends State<FinancialStatisticsScreen> {
 
     String csv = const ListToCsvConverter().convert(rows);
 
-    if (Platform.isMacOS) {
-      // macOS: 使用 file_picker 让用户选择保存位置
+    if (Platform.isMacOS || Platform.isWindows) {
+      // macOS 和 Windows: 使用 file_picker 让用户选择保存位置
       String? selectedPath = await FilePicker.platform.saveFile(
         dialogTitle: '保存财务统计报告',
         fileName: 'financial_statistics.csv',

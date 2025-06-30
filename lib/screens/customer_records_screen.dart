@@ -151,8 +151,8 @@ class _CustomerRecordsScreenState extends State<CustomerRecordsScreen> {
 
     String csv = const ListToCsvConverter().convert(rows);
 
-    if (Platform.isMacOS) {
-      // macOS: 使用 file_picker 让用户选择保存位置
+    if (Platform.isMacOS || Platform.isWindows) {
+      // macOS 和 Windows: 使用 file_picker 让用户选择保存位置
       String? selectedPath = await FilePicker.platform.saveFile(
         dialogTitle: '保存客户交易记录',
         fileName: '${widget.customerName}_records.csv',

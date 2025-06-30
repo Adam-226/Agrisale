@@ -259,6 +259,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-').substring(0, 19);
       final fileName = '${username}_农资数据_$timestamp.json';
 
+      if (Platform.isMacOS || Platform.isWindows) {
+        // macOS 和 Windows: 使用 file_picker 让用户选择保存位置
+        String? selectedPath = await FilePicker.platform.saveFile(
+          dialogTitle: '保存数据备份',
+          fileName: fileName,
+          type: FileType.custom,
+          allowedExtensions: ['json'],
+        );
+        
+        if (selectedPath != null) {
+          final file = File(selectedPath);
+          await file.writeAsString(jsonString);
+          
+          Navigator.of(context).pop(); // 关闭加载对话框
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('数据导出成功: $selectedPath'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        } else {
+          Navigator.of(context).pop(); // 关闭加载对话框
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('已取消导出')),
+          );
+        }
+        return;
+      }
+
       String path;
       if (Platform.isAndroid) {
         // 请求存储权限
@@ -276,11 +306,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final directory = await getApplicationDocumentsDirectory();
         path = '${directory.path}/$fileName';
       } else {
-        Navigator.of(context).pop(); // 关闭加载对话框
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('不支持的平台')),
-        );
-        return;
+        // 其他平台使用应用文档目录作为后备方案
+        final directory = await getApplicationDocumentsDirectory();
+        path = '${directory.path}/$fileName';
       }
 
       // 写入文件
