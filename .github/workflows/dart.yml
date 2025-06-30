@@ -1,87 +1,232 @@
-name: Flutter Multi-Platform Build
+name: Multi-Platform Build
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  FLUTTER_VERSION: "3.24.0"
+  VERSION_TAG: "v1.0.0"
 
 jobs:
-  build:
-    name: 🎉 Multi-Platform Build
+  # iOS 构建
+  build-ios:
+    name: 🍎 iOS Build
     runs-on: macos-latest
-
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - uses: subosito/flutter-action@v2
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
           architecture: x64
 
-      - run: flutter pub get
+      - name: Install Dependencies
+        run: flutter pub get
 
-    # ---------------- iOS Build ----------------
-      - run: pod repo update
+      - name: Update CocoaPods
+        run: pod repo update
         working-directory: ios
 
-      - run: flutter build ios --release --no-codesign
+      - name: Build iOS Release
+        run: flutter build ios --release --no-codesign
 
-      - run: mkdir Payload
+      - name: Create IPA
+        run: |
+          mkdir Payload
+          mv Runner.app/ Payload
+          zip -qq -r -9 agrisale-ios-${{ env.VERSION_TAG }}.ipa Payload
         working-directory: build/ios/iphoneos
 
-      - run: mv Runner.app Payload
-        working-directory: build/ios/iphoneos
-
-      - name: Zip iOS IPA
-        run: zip -qq -r -9 agrisale-ios.ipa Payload
-        working-directory: build/ios/iphoneos
-
-    # ---------------- Android Build ----------------
-      - run: flutter build apk --release
-
-      - name: Rename Android APK
-        run: mv build/app/outputs/flutter-apk/app-release.apk agrisale-android.apk
-
-    # ---------------- macOS Build ----------------
-      - run: flutter build macos --release
-
-      - name: Zip macOS app
-        run: zip -qq -r -9 agrisale-macos.zip build/macos/Build/Products/Release/agrisale.app
-
-    # ---------------- Windows Build ----------------
-      - run: flutter build windows --release
-
-      - name: Zip Windows app
-        run: zip -qq -r -9 agrisale-windows.zip build/windows/runner/Release
-
-    # ---------------- Upload to GitHub Release ----------------
-      - name: Upload iOS IPA
-        uses: svenstaro/upload-release-action@v2
+      - name: Upload iOS Artifact
+        uses: actions/upload-artifact@v4
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: build/ios/iphoneos/agrisale-ios.ipa
-          tag: v1.0.0
-          overwrite: true
-          body: "First Multi-Platform Release"
+          name: iOS-Build
+          path: build/ios/iphoneos/agrisale-ios-${{ env.VERSION_TAG }}.ipa
+
+  # Android 构建
+  build-android:
+    name: 🤖 Android Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build Android APK
+        run: flutter build apk --release
+
+      - name: Build Android App Bundle
+        run: flutter build appbundle --release
+
+      - name: Rename Build Files
+        run: |
+          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/agrisale-android-${{ env.VERSION_TAG }}.apk
+          mv build/app/outputs/bundle/release/app-release.aab build/app/outputs/bundle/release/agrisale-android-${{ env.VERSION_TAG }}.aab
 
       - name: Upload Android APK
-        uses: svenstaro/upload-release-action@v2
+        uses: actions/upload-artifact@v4
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: agrisale-android.apk
-          tag: v1.0.0
-          overwrite: true
+          name: Android-APK
+          path: build/app/outputs/flutter-apk/agrisale-android-${{ env.VERSION_TAG }}.apk
 
-      - name: Upload macOS ZIP
-        uses: svenstaro/upload-release-action@v2
+      - name: Upload Android Bundle
+        uses: actions/upload-artifact@v4
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: agrisale-macos.zip
-          tag: v1.0.0
-          overwrite: true
+          name: Android-Bundle
+          path: build/app/outputs/bundle/release/agrisale-android-${{ env.VERSION_TAG }}.aab
 
-      - name: Upload Windows ZIP
-        uses: svenstaro/upload-release-action@v2
+  # macOS 构建
+  build-macos:
+    name: 🖥️ macOS Build
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: agrisale-windows.zip
-          tag: v1.0.0
-          overwrite: true
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          architecture: x64
+
+      - name: Enable macOS Desktop
+        run: flutter config --enable-macos-desktop
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Update CocoaPods
+        run: pod repo update
+        working-directory: macos
+
+      - name: Build macOS Release
+        run: flutter build macos --release
+
+      - name: Create macOS Archive
+        run: |
+          cd build/macos/Build/Products/Release
+          zip -qq -r -9 ../../../../../agrisale-macos-${{ env.VERSION_TAG }}.zip agrisale.app
+
+      - name: Upload macOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macOS-Build
+          path: agrisale-macos-${{ env.VERSION_TAG }}.zip
+
+  # Windows 构建
+  build-windows:
+    name: 🪟 Windows Build
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: Enable Windows Desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build Windows Release
+        run: flutter build windows --release
+
+      - name: Create Windows Archive
+        run: |
+          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "agrisale-windows-${{ env.VERSION_TAG }}.zip"
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows-Build
+          path: agrisale-windows-${{ env.VERSION_TAG }}.zip
+
+  # 创建 GitHub Release
+  create-release:
+    name: 📦 Create Release
+    needs: [build-ios, build-android, build-macos, build-windows]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -la artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.VERSION_TAG }}
+          name: "农资销售管理系统 ${{ env.VERSION_TAG }}"
+          body: |
+            ## 🎉 农资销售管理系统 ${{ env.VERSION_TAG }}
+            
+            ### 📱 支持平台
+            - **iOS**: iPhone 和 iPad
+            - **Android**: 手机和平板
+            - **macOS**: Mac 桌面应用
+            - **Windows**: Windows 桌面应用
+            
+            ### 🆕 主要功能
+            - 📦 产品库存管理
+            - 🛒 采购销售管理
+            - 👥 客户供应商管理
+            - 📊 财务报表统计
+            - 🤖 AI 数据助手
+            - 💾 数据备份恢复
+            - 🔐 多用户系统
+            
+            ### 📥 下载说明
+            - **iOS用户**: 下载 `agrisale-ios-${{ env.VERSION_TAG }}.ipa` 文件
+            - **Android用户**: 下载 `agrisale-android-${{ env.VERSION_TAG }}.apk` 文件
+            - **macOS用户**: 下载 `agrisale-macos-${{ env.VERSION_TAG }}.zip` 文件
+            - **Windows用户**: 下载 `agrisale-windows-${{ env.VERSION_TAG }}.zip` 文件
+            
+            ### 🔧 安装说明
+            - **iOS**: 需要使用第三方工具如 AltStore 或企业证书安装
+            - **Android**: 开启"未知来源应用"后直接安装
+            - **macOS**: 解压后拖拽到应用程序文件夹
+            - **Windows**: 解压后运行 agrisale.exe
+            
+            ---
+            
+            **完整跨平台支持 | 原生用户体验 | 开源免费**
+          files: |
+            artifacts/iOS-Build/agrisale-ios-${{ env.VERSION_TAG }}.ipa
+            artifacts/Android-APK/agrisale-android-${{ env.VERSION_TAG }}.apk
+            artifacts/Android-Bundle/agrisale-android-${{ env.VERSION_TAG }}.aab
+            artifacts/macOS-Build/agrisale-macos-${{ env.VERSION_TAG }}.zip
+            artifacts/Windows-Build/agrisale-windows-${{ env.VERSION_TAG }}.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
