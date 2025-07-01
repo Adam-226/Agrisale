@@ -1,11 +1,11 @@
 {
-    "name": "Agrisale",
-    "short_name": "Agrisale",
+    "name": "agrisale",
+    "short_name": "agrisale",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "Agrisale - Agricultural Sales Management System",
+    "description": "A new Flutter project agrisale.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

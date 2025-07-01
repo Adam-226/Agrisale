@@ -195,7 +195,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             SizedBox(width: 10),
                             Text(
-                              'Agrisale',
+                              '农资管理系统',
                               style: TextStyle(
                                 fontSize: 26,
                                 fontWeight: FontWeight.bold,

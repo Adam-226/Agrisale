@@ -37,7 +37,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Agrisale',
+      title: '农资管理系统',
       theme: ThemeData(
         primarySwatch: Colors.green, // 使用绿色作为主色调，与农资主题相符
         colorScheme: ColorScheme.fromSwatch(

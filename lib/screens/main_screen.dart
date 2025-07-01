@@ -126,7 +126,7 @@ class _MainScreenState extends State<MainScreen> {
             ),
             SizedBox(width: 10),
             Text(
-              'Agrisale',
+              '农资管理系统',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
