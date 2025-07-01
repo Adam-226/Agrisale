@@ -29,7 +29,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
   DateTime? _endDate;
   
   // 统计数据
-  int _totalQuantity = 0;
+  double _totalQuantity = 0.0;
   double _totalPrice = 0.0;
 
   @override
@@ -119,11 +119,11 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
   
   // 计算总量和总售价
   void _calculateTotals(List<Map<String, dynamic>> filteredSales) {
-    int totalQuantity = 0;
+    double totalQuantity = 0.0;
     double totalPrice = 0.0;
     
     for (var sale in filteredSales) {
-      totalQuantity += sale['quantity'] as int;
+      totalQuantity += (sale['quantity'] as num).toDouble();
       totalPrice += (sale['totalSalePrice'] as num).toDouble();
     }
     
@@ -381,6 +381,17 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
     }
   }
   
+  // 格式化数字显示：整数显示为整数，小数显示为小数
+  String _formatNumber(dynamic number) {
+    if (number == null) return '0';
+    double value = number is double ? number : double.tryParse(number.toString()) ?? 0.0;
+    if (value == value.floor()) {
+      return value.toInt().toString();
+    } else {
+      return value.toString();
+    }
+  }
+
   // 格式化日期
   String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -549,7 +560,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                                          color: Colors.green[700]),
                                     SizedBox(width: 4),
                                     Text(
-                                      '数量: ${sale['quantity']} ${product['unit']}',
+                                      '数量: ${_formatNumber(sale['quantity'])} ${product['unit']}',
                                       style: TextStyle(fontSize: 13),
                                     ),
                                     SizedBox(width: 16),
@@ -705,7 +716,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('总记录数: ${_sales.length}'),
-                Text('总数量: $_totalQuantity ${_selectedProductName != null ? productUnit : ""}'),
+                Text('总数量: ${_formatNumber(_totalQuantity)} ${_selectedProductName != null ? productUnit : ""}'),
               ],
             ),
             SizedBox(height: 4),
@@ -728,7 +739,7 @@ class SalesTableScreen extends StatelessWidget {
   final List<Map<String, dynamic>> sales;
   final List<Map<String, dynamic>> customers;
   final List<Map<String, dynamic>> products;
-  final int totalQuantity;
+  final double totalQuantity;
   final double totalPrice;
 
   SalesTableScreen({
@@ -738,6 +749,17 @@ class SalesTableScreen extends StatelessWidget {
     required this.totalQuantity,
     required this.totalPrice,
   });
+
+  // 格式化数字显示：整数显示为整数，小数显示为小数
+  String _formatNumber(dynamic number) {
+    if (number == null) return '0';
+    double value = number is double ? number : double.tryParse(number.toString()) ?? 0.0;
+    if (value == value.floor()) {
+      return value.toInt().toString();
+    } else {
+      return value.toString();
+    }
+  }
 
   Future<void> _exportToCSV(BuildContext context) async {
     String csvData = '日期,产品,数量,单位,客户,总售价,备注\n';
@@ -750,13 +772,13 @@ class SalesTableScreen extends StatelessWidget {
             (p) => p['name'] == sale['productName'],
         orElse: () => {'unit': ''},
       );
-      csvData += '${sale['saleDate']},${sale['productName']},${sale['quantity']},${product['unit']},${customer['name']},${sale['totalSalePrice']},${sale['note'] ?? ''}\n';
+      csvData += '${sale['saleDate']},${sale['productName']},${_formatNumber(sale['quantity'])},${product['unit']},${customer['name']},${sale['totalSalePrice']},${sale['note'] ?? ''}\n';
     }
     
     // 添加统计信息
     csvData += '\n总计,,,,,\n';
     csvData += '记录数,${sales.length}\n';
-    csvData += '总数量,${totalQuantity}\n';
+    csvData += '总数量,${_formatNumber(totalQuantity)}\n';
     csvData += '总售价,${totalPrice.toStringAsFixed(2)}\n';
 
     if (Platform.isMacOS || Platform.isWindows) {
@@ -868,7 +890,7 @@ class SalesTableScreen extends StatelessWidget {
                   Column(
                     children: [
                       Text('总数量', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
-                      Text('$totalQuantity', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                              Text('${_formatNumber(totalQuantity)}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ],
                   ),
                   Column(
@@ -957,7 +979,7 @@ class SalesTableScreen extends StatelessWidget {
                               cells: [
                     DataCell(Text(sale['saleDate'])),
                     DataCell(Text(sale['productName'])),
-                    DataCell(Text(sale['quantity'].toString())),
+                    DataCell(Text(_formatNumber(sale['quantity']))),
                     DataCell(Text(product['unit'])),
                     DataCell(Text(customer['name'])),
                                 DataCell(

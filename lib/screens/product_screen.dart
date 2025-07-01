@@ -159,7 +159,7 @@ class _ProductScreenState extends State<ProductScreen> {
           '您确定要删除以下产品吗？\n\n'
               '产品名称: ${product['name']}\n'
               '描述: ${product['description'] ?? '无描述'}\n'
-              '库存: ${product['stock']} ${product['unit']}',
+              '库存: ${_formatNumber(product['stock'])} ${product['unit']}',
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -329,7 +329,7 @@ class _ProductScreenState extends State<ProductScreen> {
                                         Padding(
                                           padding: const EdgeInsets.only(top: 4),
                                           child: Text(
-                                            '库存: ${product['stock']} ${product['unit']}',
+                                            '库存: ${_formatNumber(product['stock'])} ${product['unit']}',
                                             style: TextStyle(
                                               fontSize: 14,
                                               color: Colors.grey[700],
@@ -454,6 +454,17 @@ class _ProductScreenState extends State<ProductScreen> {
       ),
     );
   }
+
+  // 格式化数字显示，如果是整数则不显示小数点，如果是小数则显示小数部分
+  String _formatNumber(dynamic number) {
+    if (number == null) return '0';
+    double value = number is double ? number : double.tryParse(number.toString()) ?? 0.0;
+    if (value == value.floor()) {
+      return value.toInt().toString();
+    } else {
+      return value.toString();
+    }
+  }
 }
 
 class ProductDialog extends StatefulWidget {
@@ -544,13 +555,16 @@ class _ProductDialogState extends State<ProductDialog> {
                         fillColor: Colors.grey[50],
                         prefixIcon: Icon(Icons.inventory, color: Colors.green),
                       ),
-              keyboardType: TextInputType.number,
+                      keyboardType: TextInputType.numberWithOptions(decimal: true),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return '请输入库存';
                         }
-                        if (int.tryParse(value) == null) {
+                        if (double.tryParse(value) == null) {
                           return '请输入有效数字';
+                        }
+                        if (double.parse(value) < 0) {
+                          return '库存不能为负数';
                         }
                         return null;
                       },
@@ -607,7 +621,7 @@ class _ProductDialogState extends State<ProductDialog> {
                 final product = {
                     'name': _nameController.text.trim(),
                     'description': _descriptionController.text.trim(),
-                  'stock': int.tryParse(_stockController.text) ?? 0,
+                  'stock': double.tryParse(_stockController.text) ?? 0.0,
                   'unit': _selectedUnit,
                 };
                   if (widget.product != null) {

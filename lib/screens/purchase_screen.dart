@@ -47,6 +47,17 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
     super.dispose();
   }
 
+  // 格式化数字显示，如果是整数则不显示小数点，如果是小数则显示小数部分
+  String _formatNumber(dynamic number) {
+    if (number == null) return '0';
+    double value = number is double ? number : double.tryParse(number.toString()) ?? 0.0;
+    if (value == value.floor()) {
+      return value.toInt().toString();
+    } else {
+      return value.toString();
+    }
+  }
+
   // 重置所有过滤条件
   void _resetFilters() {
     setState(() {
@@ -288,7 +299,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
         content: Text(
           '您确定要删除以下采购记录吗？\n\n'
               '产品名称: ${purchase['productName']}\n'
-              '数量: ${purchase['quantity']} ${product['unit']}\n'
+              '数量: ${_formatNumber(purchase['quantity'])} ${product['unit']}\n'
               '供应商: ${supplier['name']}\n'
               '日期: ${purchase['purchaseDate']}',
         ),
@@ -717,7 +728,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                                          color: Colors.green[700]),
                                     SizedBox(width: 4),
                                     Text(
-                                      '数量: ${purchase['quantity']} ${product['unit']}',
+                                      '数量: ${_formatNumber(purchase['quantity'])} ${product['unit']}',
                                       style: TextStyle(fontSize: 13),
                                     ),
                                   ],
@@ -948,7 +959,7 @@ class _PurchaseDialogState extends State<PurchaseDialog> {
 
   void _calculateTotalPrice() {
     final purchasePrice = double.tryParse(_purchasePriceController.text) ?? 0.0;
-    final quantity = int.tryParse(_quantityController.text) ?? 0;
+    final quantity = double.tryParse(_quantityController.text) ?? 0.0;
     setState(() {
       _totalPurchasePrice = purchasePrice * quantity;
     });
@@ -1054,13 +1065,16 @@ class _PurchaseDialogState extends State<PurchaseDialog> {
                         fillColor: Colors.grey[50],
                         prefixIcon: Icon(Icons.format_list_numbered, color: Colors.green),
                       ),
-              keyboardType: TextInputType.number,
+                      keyboardType: TextInputType.numberWithOptions(decimal: true),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return '请输入数量';
                         }
-                        if (int.tryParse(value) == null) {
+                        if (double.tryParse(value) == null) {
                           return '请输入有效数字';
+                        }
+                        if (double.parse(value) <= 0) {
+                          return '数量必须大于0';
                         }
                         return null;
                       },
@@ -1081,13 +1095,16 @@ class _PurchaseDialogState extends State<PurchaseDialog> {
                         fillColor: Colors.grey[50],
                         prefixIcon: Icon(Icons.attach_money, color: Colors.green),
                       ),
-              keyboardType: TextInputType.number,
+                      keyboardType: TextInputType.numberWithOptions(decimal: true),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return '请输入进价';
                         }
                         if (double.tryParse(value) == null) {
                           return '请输入有效数字';
+                        }
+                        if (double.parse(value) < 0) {
+                          return '进价不能为负数';
                         }
                         return null;
                       },
@@ -1179,7 +1196,7 @@ class _PurchaseDialogState extends State<PurchaseDialog> {
                 if (_formKey.currentState!.validate()) {
                 final purchase = {
                   'productName': _selectedProduct,
-                  'quantity': int.tryParse(_quantityController.text) ?? 0,
+                  'quantity': double.tryParse(_quantityController.text) ?? 0.0,
                     'supplierId': int.tryParse(_selectedSupplier ?? '') ?? 0,
                   'purchaseDate': DateFormat('yyyy-MM-dd').format(_selectedDate),
                   'totalPurchasePrice': _totalPurchasePrice,

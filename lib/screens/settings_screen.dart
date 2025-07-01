@@ -257,7 +257,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       
       // 生成文件名
       final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-').substring(0, 19);
-      final fileName = '${username}_农资数据_$timestamp.json';
+      final fileName = '${username}_Agrisale数据_$timestamp.json';
 
       if (Platform.isMacOS || Platform.isWindows) {
         // macOS 和 Windows: 使用 file_picker 让用户选择保存位置
@@ -319,7 +319,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       if (Platform.isIOS) {
         // iOS 让用户手动选择存储位置
-        await Share.shareFiles([file.path], text: '农资管理系统数据备份文件');
+        await Share.shareFiles([file.path], text: 'Agrisale数据备份文件');
       } else {
         // Android 直接存入 Download 目录，并提示用户
         ScaffoldMessenger.of(context).showSnackBar(
@@ -962,19 +962,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ListTile(
                           leading: Icon(Icons.info_outline, color: Colors.blue),
                           title: Text('系统信息'),
-                          subtitle: Text('农资管理系统 v1.0.0'),
+                          subtitle: Text('Agrisale v1.0.0'),
                           trailing: Icon(Icons.arrow_forward_ios, size: 16),
                           onTap: () {
                             showAboutDialog(
                               context: context,
-                              applicationName: '农资管理系统',
+                              applicationName: 'Agrisale',
                               applicationVersion: 'v1.0.0',
                               applicationIcon: Image.asset(
                                 'assets/images/background.png',
                                 width: 50,
                                 height: 50,
                               ),
-                              applicationLegalese: '© 2025 农资管理系统',
+                              applicationLegalese: '© 2025 Agrisale',
                             );
                           },
                         ),

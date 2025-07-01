@@ -237,6 +237,13 @@ class _FinancialStatisticsScreenState extends State<FinancialStatisticsScreen> {
     });
   }
 
+  // 格式化金额方法：保留两位小数，去除不必要的零
+  String _formatAmount(dynamic amount) {
+    if (amount == null) return '0.00';
+    double value = amount is double ? amount : double.tryParse(amount.toString()) ?? 0.0;
+    return value.toStringAsFixed(2);
+  }
+
   Future<void> _exportToCSV() async {
     // 添加用户信息到CSV头部
     final prefs = await SharedPreferences.getInstance();
@@ -261,9 +268,9 @@ class _FinancialStatisticsScreenState extends State<FinancialStatisticsScreen> {
       
       List<dynamic> row = [];
       row.add(stat[dateKey]);
-      row.add(totalSales);
-      row.add(totalPurchases);
-      row.add(profit);
+      row.add(_formatAmount(totalSales));
+      row.add(_formatAmount(totalPurchases));
+      row.add(_formatAmount(profit));
       rows.add(row);
     }
 

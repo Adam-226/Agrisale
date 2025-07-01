@@ -3,6 +3,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
 import 'screens/product_screen.dart';
@@ -36,7 +37,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '农资管理系统',
+      title: 'Agrisale',
       theme: ThemeData(
         primarySwatch: Colors.green, // 使用绿色作为主色调，与农资主题相符
         colorScheme: ColorScheme.fromSwatch(
@@ -44,6 +45,8 @@ class MyApp extends StatelessWidget {
           accentColor: Colors.lightGreen, // 强调色
           brightness: Brightness.light,
         ),
+        // 只在Windows平台设置字体，解决中文字体不一致问题，不影响其他平台
+        textTheme: Platform.isWindows ? GoogleFonts.notoSansScTextTheme() : null,
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),

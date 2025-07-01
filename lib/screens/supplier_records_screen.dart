@@ -31,6 +31,17 @@ class _SupplierRecordsScreenState extends State<SupplierRecordsScreen> {
     _fetchRecords();
   }
 
+  // 格式化数字方法：整数显示为整数，小数显示为小数
+  String _formatNumber(dynamic number) {
+    if (number == null) return '0';
+    double value = number is double ? number : double.tryParse(number.toString()) ?? 0.0;
+    if (value == value.floor()) {
+      return value.toInt().toString();
+    } else {
+      return value.toString();
+    }
+  }
+
   Future<void> _fetchRecords() async {
     final db = await DatabaseHelper().database;
     final prefs = await SharedPreferences.getInstance();
@@ -89,7 +100,7 @@ class _SupplierRecordsScreenState extends State<SupplierRecordsScreen> {
       rows.add([
         purchase['purchaseDate'],
         purchase['productName'],
-        purchase['quantity'],
+        _formatNumber(purchase['quantity']),
         purchase['unit'] ?? '',
         purchase['totalPurchasePrice'],
         purchase['note'] ?? ''
@@ -318,7 +329,7 @@ class _SupplierRecordsScreenState extends State<SupplierRecordsScreen> {
                 rows: _purchases.map((purchase) => DataRow(cells: [
                   DataCell(Text(purchase['purchaseDate'])),
                   DataCell(Text(purchase['productName'])),
-                  DataCell(Text(purchase['quantity'].toString())),
+                  DataCell(Text(_formatNumber(purchase['quantity']))),
                   DataCell(Text(purchase['unit'] ?? '')),
                             DataCell(
                               Text(

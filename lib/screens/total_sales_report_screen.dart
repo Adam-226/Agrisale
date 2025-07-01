@@ -27,7 +27,7 @@ class _TotalSalesReportScreenState extends State<TotalSalesReportScreen> {
   DateTime? _endDate;
   
   // 统计数据
-  int _totalQuantity = 0;
+  double _totalQuantity = 0.0;
   double _totalPrice = 0.0;
 
   @override
@@ -188,16 +188,16 @@ class _TotalSalesReportScreenState extends State<TotalSalesReportScreen> {
   
   // 计算总量和总金额
   void _calculateTotals(List<Map<String, dynamic>> filteredRecords) {
-    int totalQuantity = 0;
+    double totalQuantity = 0.0;
     double totalPrice = 0.0;
     
     for (var record in filteredRecords) {
       // 销售是正值，退货是负值
       if (record['type'] == '销售') {
-        totalQuantity += record['quantity'] as int;
+        totalQuantity += (record['quantity'] as num).toDouble();
         totalPrice += (record['totalPrice'] as num).toDouble();
       } else {
-        totalQuantity -= record['quantity'] as int;
+        totalQuantity -= (record['quantity'] as num).toDouble();
         totalPrice -= (record['totalPrice'] as num).toDouble();
       }
     }
@@ -466,6 +466,17 @@ class _TotalSalesReportScreenState extends State<TotalSalesReportScreen> {
     }
   }
   
+     // 格式化数字显示：整数显示为整数，小数显示为小数
+   String _formatNumber(dynamic number) {
+     if (number == null) return '0';
+     double value = number is double ? number : double.tryParse(number.toString()) ?? 0.0;
+     if (value == value.floor()) {
+       return value.toInt().toString();
+     } else {
+       return value.toString();
+     }
+   }
+  
   // 格式化日期
   String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -672,7 +683,7 @@ class _TotalSalesReportScreenState extends State<TotalSalesReportScreen> {
                                        color: Colors.blue[700]),
                                   SizedBox(width: 4),
                                   Text(
-                                    '数量: ${record['quantity']} ${product['unit']}',
+                                    '数量: ${_formatNumber(record['quantity'])} ${product['unit']}',
                                     style: TextStyle(fontSize: 13),
                                   ),
                                   SizedBox(width: 16),
@@ -773,7 +784,7 @@ class _TotalSalesReportScreenState extends State<TotalSalesReportScreen> {
                 if (_startDate != null || _endDate != null)
                   Chip(
                     label: Text(
-                      '时间: ${_startDate != null ? _formatDate(_startDate!) : '无限制'} 至 ${_endDate != null ? _formatDate(_endDate!) : '无限制'}'
+                                             '时间: ${_startDate != null ? _formatDate(_startDate!) : '无限制'} 至 ${_endDate != null ? _formatDate(_endDate!) : '无限制'}'
                     ),
                     deleteIcon: Icon(Icons.close, size: 18),
                     onDeleted: () {
@@ -834,7 +845,7 @@ class _TotalSalesReportScreenState extends State<TotalSalesReportScreen> {
               children: [
                 Text('总记录数: ${_combinedRecords.length}'),
                 Text(
-                  '净数量: $quantitySign$_totalQuantity ${_selectedProductName != null ? productUnit : ""}',
+                  '净数量: $quantitySign${_formatNumber(_totalQuantity)} ${_selectedProductName != null ? productUnit : ""}',
                   style: TextStyle(color: quantityColor),
                 ),
               ],
@@ -862,7 +873,7 @@ class TotalSalesTableScreen extends StatelessWidget {
   final List<Map<String, dynamic>> records;
   final List<Map<String, dynamic>> customers;
   final List<Map<String, dynamic>> products;
-  final int totalQuantity;
+  final double totalQuantity;
   final double totalPrice;
 
   TotalSalesTableScreen({
@@ -872,6 +883,17 @@ class TotalSalesTableScreen extends StatelessWidget {
     required this.totalQuantity,
     required this.totalPrice,
   });
+
+  // 格式化数字显示：整数显示为整数，小数显示为小数
+  String _formatNumber(dynamic number) {
+    if (number == null) return '0';
+    double value = number is double ? number : double.tryParse(number.toString()) ?? 0.0;
+    if (value == value.floor()) {
+      return value.toInt().toString();
+    } else {
+      return value.toString();
+    }
+  }
 
   Future<void> _exportToCSV(BuildContext context) async {
     // 添加用户信息到CSV头部
@@ -898,8 +920,8 @@ class TotalSalesTableScreen extends StatelessWidget {
       
       // 根据类型决定数量正负
       String quantity = record['type'] == '销售'
-          ? record['quantity'].toString()
-          : '-${record['quantity']}';
+          ? _formatNumber(record['quantity'])
+          : '-${_formatNumber(record['quantity'])}';
       
       csvData += '${record['date']},${record['type']},${record['productName']},$quantity,${product['unit']},${customer['name']},$amount,${record['note'] ?? ''}\n';
     }
@@ -907,7 +929,7 @@ class TotalSalesTableScreen extends StatelessWidget {
     // 添加统计信息
     csvData += '\n总计,,,,,\n';
     csvData += '记录数,${records.length}\n';
-    csvData += '净数量,${totalQuantity}\n';
+    csvData += '净数量,${_formatNumber(totalQuantity)}\n';
     csvData += '净收入,${totalPrice.toStringAsFixed(2)}\n';
 
     if (Platform.isMacOS || Platform.isWindows) {
@@ -1025,7 +1047,7 @@ class TotalSalesTableScreen extends StatelessWidget {
                   Column(
                     children: [
                       Text('净数量', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
-                      Text('$quantitySign$totalQuantity', 
+                      Text('$quantitySign${_formatNumber(totalQuantity)}', 
                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: quantityColor)),
                     ],
                   ),
@@ -1121,10 +1143,10 @@ class TotalSalesTableScreen extends StatelessWidget {
                                 ? record['totalPrice'].toString() 
                                 : '-${record['totalPrice']}';
                             
-                            // 根据类型决定数量显示格式
+                            // 根据类型决定数量正负
                             String quantity = record['type'] == '销售'
-                                ? record['quantity'].toString()
-                                : '-${record['quantity']}';
+                                ? _formatNumber(record['quantity'])
+                                : '-${_formatNumber(record['quantity'])}';
                             
                             return DataRow(
                               cells: [

@@ -33,13 +33,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   };
 
   // 汇总数据
-  int _purchaseQuantity = 0;
+  double _purchaseQuantity = 0.0;
   double _purchaseAmount = 0.0;
-  int _saleQuantity = 0;
+  double _saleQuantity = 0.0;
   double _saleAmount = 0.0;
-  int _returnQuantity = 0;
+  double _returnQuantity = 0.0;
   double _returnAmount = 0.0;
-  int _currentStock = 0;
+  double _currentStock = 0.0;
 
   @override
   void initState() {
@@ -348,29 +348,29 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           _filteredRecords = allRecords;
           _suppliers = suppliers;
           _customers = customers;
-          _currentStock = widget.product['stock'];
+          _currentStock = (widget.product['stock'] as num).toDouble();
         });
       }
     }
   }
 
   void _calculateSummary(List<Map<String, dynamic>> records) {
-    int purchaseQuantity = 0;
+    double purchaseQuantity = 0.0;
     double purchaseAmount = 0.0;
-    int saleQuantity = 0;
+    double saleQuantity = 0.0;
     double saleAmount = 0.0;
-    int returnQuantity = 0;
+    double returnQuantity = 0.0;
     double returnAmount = 0.0;
 
     for (var record in records) {
       if (record['recordType'] == '采购') {
-        purchaseQuantity += record['quantity'] as int;
+        purchaseQuantity += (record['quantity'] as num).toDouble();
         purchaseAmount += (record['totalPrice'] as num).toDouble();
       } else if (record['recordType'] == '销售') {
-        saleQuantity += record['quantity'] as int;
+        saleQuantity += (record['quantity'] as num).toDouble();
         saleAmount += (record['totalPrice'] as num).toDouble();
       } else if (record['recordType'] == '退货') {
-        returnQuantity += record['quantity'] as int;
+        returnQuantity += (record['quantity'] as num).toDouble();
         returnAmount += (record['totalPrice'] as num).toDouble();
       }
     }
@@ -383,6 +383,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       _returnQuantity = returnQuantity;
       _returnAmount = returnAmount;
     });
+  }
+
+  // 格式化数字显示：整数显示为整数，小数显示为小数
+  String _formatNumber(dynamic number) {
+    if (number == null) return '0';
+    double value = number is double ? number : double.tryParse(number.toString()) ?? 0.0;
+    if (value == value.floor()) {
+      return value.toInt().toString();
+    } else {
+      return value.toString();
+    }
   }
 
   // 导出为CSV文件
@@ -401,15 +412,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       String quantitySign = record['recordType'] == '销售' ? '-' : '+';
       String priceSign = record['recordType'] == '销售' ? '+' : '-';
       
-      csvData += '${record['date']},${record['recordType']},${record['productName']},$quantitySign${record['quantity']},${widget.product['unit']},${record['partnerName']},$priceSign${record['totalPrice']},${record['note'] ?? ''}\n';
+      csvData += '${record['date']},${record['recordType']},${record['productName']},$quantitySign${_formatNumber(record['quantity'])},${widget.product['unit']},${record['partnerName']},$priceSign${record['totalPrice']},${record['note'] ?? ''}\n';
     }
     
     // 添加汇总信息
     csvData += '\n汇总信息,,,,,\n';
-    csvData += '当前库存,${_currentStock},${widget.product['unit']}\n';
-    csvData += '采购总量,$_purchaseQuantity,${widget.product['unit']}\n';
-    csvData += '销售总量,$_saleQuantity,${widget.product['unit']}\n';
-    csvData += '退货总量,$_returnQuantity,${widget.product['unit']}\n';
+    csvData += '当前库存,${_formatNumber(_currentStock)},${widget.product['unit']}\n';
+    csvData += '采购总量,${_formatNumber(_purchaseQuantity)},${widget.product['unit']}\n';
+    csvData += '销售总量,${_formatNumber(_saleQuantity)},${widget.product['unit']}\n';
+    csvData += '退货总量,${_formatNumber(_returnQuantity)},${widget.product['unit']}\n';
     csvData += '采购总额,-¥${_purchaseAmount.toStringAsFixed(2)}\n';
     csvData += '销售总额,+¥${_saleAmount.toStringAsFixed(2)}\n';
     csvData += '退货总额,-¥${_returnAmount.toStringAsFixed(2)}\n';
@@ -640,7 +651,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               ),
                               DataCell(
                                 Text(
-                                  '$quantitySign${record['quantity']}',
+                                  '$quantitySign${_formatNumber(record['quantity'])}',
                                   style: TextStyle(
                                     color: typeColor,
                                     fontWeight: FontWeight.bold,
@@ -748,7 +759,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildSummaryItem('当前库存', '$_currentStock ${widget.product['unit']}', Colors.blue),
+                  _buildSummaryItem('当前库存', '${_formatNumber(_currentStock)} ${widget.product['unit']}', Colors.blue),
                   _buildSummaryItem('记录总数', '${_filteredRecords.length}', Colors.purple),
                 ],
               ),
@@ -758,9 +769,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildSummaryItem('采购总量', '+$_purchaseQuantity ${widget.product['unit']}', Colors.blue),
-                  _buildSummaryItem('销售总量', '-$_saleQuantity ${widget.product['unit']}', Colors.green),
-                  _buildSummaryItem('退货总量', '+$_returnQuantity ${widget.product['unit']}', Colors.red),
+                  _buildSummaryItem('采购总量', '+${_formatNumber(_purchaseQuantity)} ${widget.product['unit']}', Colors.blue),
+                  _buildSummaryItem('销售总量', '-${_formatNumber(_saleQuantity)} ${widget.product['unit']}', Colors.green),
+                  _buildSummaryItem('退货总量', '+${_formatNumber(_returnQuantity)} ${widget.product['unit']}', Colors.red),
                 ],
               ),
               SizedBox(height: 12),

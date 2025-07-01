@@ -29,7 +29,7 @@ class _ReturnsReportScreenState extends State<ReturnsReportScreen> {
   DateTime? _endDate;
   
   // 统计数据
-  int _totalQuantity = 0;
+  double _totalQuantity = 0.0;
   double _totalPrice = 0.0;
 
   @override
@@ -119,11 +119,11 @@ class _ReturnsReportScreenState extends State<ReturnsReportScreen> {
   
   // 计算总量和总退款
   void _calculateTotals(List<Map<String, dynamic>> filteredReturns) {
-    int totalQuantity = 0;
+    double totalQuantity = 0.0;
     double totalPrice = 0.0;
     
     for (var returnItem in filteredReturns) {
-      totalQuantity += returnItem['quantity'] as int;
+      totalQuantity += (returnItem['quantity'] as num).toDouble();
       totalPrice += (returnItem['totalReturnPrice'] as num).toDouble();
     }
     
@@ -391,6 +391,17 @@ class _ReturnsReportScreenState extends State<ReturnsReportScreen> {
     }
   }
   
+     // 格式化数字显示：整数显示为整数，小数显示为小数
+   String _formatNumber(dynamic number) {
+     if (number == null) return '0';
+     double value = number is double ? number : double.tryParse(number.toString()) ?? 0.0;
+     if (value == value.floor()) {
+       return value.toInt().toString();
+     } else {
+       return value.toString();
+     }
+   }
+  
   // 格式化日期
   String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -559,7 +570,7 @@ class _ReturnsReportScreenState extends State<ReturnsReportScreen> {
                                          color: Colors.green[700]),
                                     SizedBox(width: 4),
                                     Text(
-                                      '数量: ${returnItem['quantity']} ${product['unit']}',
+                                      '数量: ${_formatNumber(returnItem['quantity'])} ${product['unit']}',
                                       style: TextStyle(fontSize: 13),
                                     ),
                                     SizedBox(width: 16),
@@ -660,7 +671,7 @@ class _ReturnsReportScreenState extends State<ReturnsReportScreen> {
                 if (_startDate != null || _endDate != null)
                   Chip(
                     label: Text(
-                      '时间: ${_startDate != null ? _formatDate(_startDate!) : '无限制'} 至 ${_endDate != null ? _formatDate(_endDate!) : '无限制'}'
+                                             '时间: ${_startDate != null ? _formatDate(_startDate!) : '无限制'} 至 ${_endDate != null ? _formatDate(_endDate!) : '无限制'}'
                     ),
                     deleteIcon: Icon(Icons.close, size: 18),
                     onDeleted: () {
@@ -715,7 +726,7 @@ class _ReturnsReportScreenState extends State<ReturnsReportScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('总记录数: ${_returns.length}'),
-                Text('总数量: $_totalQuantity ${_selectedProductName != null ? productUnit : ""}'),
+                Text('总数量: ${_formatNumber(_totalQuantity)} ${_selectedProductName != null ? productUnit : ""}'),
               ],
             ),
             SizedBox(height: 4),
@@ -738,7 +749,7 @@ class ReturnsTableScreen extends StatelessWidget {
   final List<Map<String, dynamic>> returns;
   final List<Map<String, dynamic>> customers;
   final List<Map<String, dynamic>> products;
-  final int totalQuantity;
+  final double totalQuantity;
   final double totalPrice;
 
   ReturnsTableScreen({
@@ -748,6 +759,17 @@ class ReturnsTableScreen extends StatelessWidget {
     required this.totalQuantity,
     required this.totalPrice,
   });
+
+  // 格式化数字显示：整数显示为整数，小数显示为小数
+  String _formatNumber(dynamic number) {
+    if (number == null) return '0';
+    double value = number is double ? number : double.tryParse(number.toString()) ?? 0.0;
+    if (value == value.floor()) {
+      return value.toInt().toString();
+    } else {
+      return value.toString();
+    }
+  }
 
   Future<void> _exportToCSV(BuildContext context) async {
     // 添加用户信息到CSV头部
@@ -767,13 +789,13 @@ class ReturnsTableScreen extends StatelessWidget {
             (p) => p['name'] == returnItem['productName'],
         orElse: () => {'unit': ''},
       );
-      csvData += '${returnItem['returnDate']},${returnItem['productName']},${returnItem['quantity']},${product['unit']},${customer['name']},${returnItem['totalReturnPrice']},${returnItem['note'] ?? ''}\n';
+      csvData += '${returnItem['returnDate']},${returnItem['productName']},${_formatNumber(returnItem['quantity'])},${product['unit']},${customer['name']},${returnItem['totalReturnPrice']},${returnItem['note'] ?? ''}\n';
     }
     
     // 添加统计信息
     csvData += '\n总计,,,,,\n';
     csvData += '记录数,${returns.length}\n';
-    csvData += '总数量,${totalQuantity}\n';
+    csvData += '总数量,${_formatNumber(totalQuantity)}\n';
     csvData += '总退款,${totalPrice.toStringAsFixed(2)}\n';
 
     if (Platform.isMacOS || Platform.isWindows) {
@@ -885,7 +907,7 @@ class ReturnsTableScreen extends StatelessWidget {
                   Column(
                     children: [
                       Text('总数量', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
-                      Text('$totalQuantity', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                              Text('${_formatNumber(totalQuantity)}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ],
                   ),
                   Column(
@@ -974,7 +996,7 @@ class ReturnsTableScreen extends StatelessWidget {
                               cells: [
                     DataCell(Text(returnItem['returnDate'])),
                     DataCell(Text(returnItem['productName'])),
-                    DataCell(Text(returnItem['quantity'].toString())),
+                    DataCell(Text(_formatNumber(returnItem['quantity']))),
                     DataCell(Text(product['unit'])),
                     DataCell(Text(customer['name'])),
                                 DataCell(

@@ -47,6 +47,17 @@ class _SalesScreenState extends State<SalesScreen> {
     super.dispose();
   }
 
+  // 格式化数字显示，如果是整数则不显示小数点，如果是小数则显示小数部分
+  String _formatNumber(dynamic number) {
+    if (number == null) return '0';
+    double value = number is double ? number : double.tryParse(number.toString()) ?? 0.0;
+    if (value == value.floor()) {
+      return value.toInt().toString();
+    } else {
+      return value.toString();
+    }
+  }
+
   // 重置所有过滤条件
   void _resetFilters() {
     setState(() {
@@ -294,7 +305,7 @@ class _SalesScreenState extends State<SalesScreen> {
         content: Text(
           '您确定要删除以下销售记录吗？\n\n'
               '产品名称: ${sale['productName']}\n'
-              '数量: ${sale['quantity']} ${product['unit']}\n'
+              '数量: ${_formatNumber(sale['quantity'])} ${product['unit']}\n'
               '客户: ${customer['name']}\n'
               '日期: ${sale['saleDate']}',
         ),
@@ -723,7 +734,7 @@ class _SalesScreenState extends State<SalesScreen> {
                                          color: Colors.green[700]),
                                     SizedBox(width: 4),
                                     Text(
-                                      '数量: ${sale['quantity']} ${product['unit']}',
+                                      '数量: ${_formatNumber(sale['quantity'])} ${product['unit']}',
                                       style: TextStyle(fontSize: 13),
                                     ),
                                   ],
@@ -928,7 +939,7 @@ class _SalesDialogState extends State<SalesDialog> {
   final _formKey = GlobalKey<FormState>();
   DateTime _selectedDate = DateTime.now();
   double _totalSalePrice = 0.0;
-  int _availableStock = 0;
+  double _availableStock = 0.0;
 
   @override
   void initState() {
@@ -960,7 +971,7 @@ class _SalesDialogState extends State<SalesDialog> {
 
   void _calculateTotalPrice() {
     final salePrice = double.tryParse(_salePriceController.text) ?? 0.0;
-    final quantity = int.tryParse(_quantityController.text) ?? 0;
+    final quantity = double.tryParse(_quantityController.text) ?? 0.0;
     setState(() {
       _totalSalePrice = salePrice * quantity;
     });
@@ -972,6 +983,17 @@ class _SalesDialogState extends State<SalesDialog> {
       setState(() {
         _availableStock = product['stock'];
       });
+    }
+  }
+
+  // 格式化数字显示，如果是整数则不显示小数点，如果是小数则显示小数部分
+  String _formatNumber(dynamic number) {
+    if (number == null) return '0';
+    double value = number is double ? number : double.tryParse(number.toString()) ?? 0.0;
+    if (value == value.floor()) {
+      return value.toInt().toString();
+    } else {
+      return value.toString();
     }
   }
 
@@ -1010,7 +1032,7 @@ class _SalesDialogState extends State<SalesDialog> {
               items: widget.products.map((product) {
                 return DropdownMenuItem<String>(
                   value: product['name'],
-                    child: Text('${product['name']} (库存: ${product['stock']} ${product['unit']})'),
+                    child: Text('${product['name']} (库存: ${_formatNumber(product['stock'])} ${product['unit']})'),
                 );
               }).toList(),
                 validator: (value) {
@@ -1077,16 +1099,19 @@ class _SalesDialogState extends State<SalesDialog> {
                         fillColor: Colors.grey[50],
                         prefixIcon: Icon(Icons.format_list_numbered, color: Colors.green),
                       ),
-              keyboardType: TextInputType.number,
+                      keyboardType: TextInputType.numberWithOptions(decimal: true),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return '请输入数量';
                         }
-                        if (int.tryParse(value) == null) {
+                        if (double.tryParse(value) == null) {
                           return '请输入有效数字';
                         }
+                        if (double.parse(value) <= 0) {
+                          return '数量必须大于0';
+                        }
                         if (_selectedProduct != null) {
-                          final quantity = int.tryParse(value) ?? 0;
+                          final quantity = double.tryParse(value) ?? 0.0;
                           if (quantity > _availableStock) {
                             return '库存不足';
                           }
@@ -1110,13 +1135,16 @@ class _SalesDialogState extends State<SalesDialog> {
                         fillColor: Colors.grey[50],
                         prefixIcon: Icon(Icons.attach_money, color: Colors.green),
                       ),
-              keyboardType: TextInputType.number,
+                      keyboardType: TextInputType.numberWithOptions(decimal: true),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return '请输入售价';
                         }
                         if (double.tryParse(value) == null) {
                           return '请输入有效数字';
+                        }
+                        if (double.parse(value) < 0) {
+                          return '售价不能为负数';
                         }
                         return null;
                       },
@@ -1211,7 +1239,7 @@ class _SalesDialogState extends State<SalesDialog> {
                 if (_formKey.currentState!.validate()) {
                   final sale = {
                     'productName': _selectedProduct,
-                    'quantity': int.tryParse(_quantityController.text) ?? 0,
+                    'quantity': double.tryParse(_quantityController.text) ?? 0.0,
                     'customerId': int.tryParse(_selectedCustomer ?? '') ?? 0,
                     'saleDate': DateFormat('yyyy-MM-dd').format(_selectedDate),
                     'totalSalePrice': _totalSalePrice,

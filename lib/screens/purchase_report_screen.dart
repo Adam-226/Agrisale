@@ -29,7 +29,7 @@ class _PurchaseReportScreenState extends State<PurchaseReportScreen> {
   DateTime? _endDate;
   
   // 统计数据
-  int _totalQuantity = 0;
+  double _totalQuantity = 0.0;
   double _totalPrice = 0.0;
 
   @override
@@ -119,11 +119,11 @@ class _PurchaseReportScreenState extends State<PurchaseReportScreen> {
   
   // 计算总量和总进价
   void _calculateTotals(List<Map<String, dynamic>> filteredPurchases) {
-    int totalQuantity = 0;
+    double totalQuantity = 0.0;
     double totalPrice = 0.0;
     
     for (var purchase in filteredPurchases) {
-      totalQuantity += purchase['quantity'] as int;
+      totalQuantity += (purchase['quantity'] as num).toDouble();
       totalPrice += (purchase['totalPurchasePrice'] as num).toDouble();
     }
     
@@ -544,7 +544,7 @@ class _PurchaseReportScreenState extends State<PurchaseReportScreen> {
                                          color: Colors.blue[700]),
                                     SizedBox(width: 4),
                                     Text(
-                                      '数量: ${purchase['quantity']} ${product['unit']}',
+                                      '数量: ${_formatNumber(purchase['quantity'])} ${product['unit']}',
                                       style: TextStyle(fontSize: 13),
                                     ),
                                     SizedBox(width: 16),
@@ -700,14 +700,14 @@ class _PurchaseReportScreenState extends State<PurchaseReportScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('总记录数: ${_purchases.length}'),
-                Text('总数量: $_totalQuantity ${_selectedProductName != null ? productUnit : ""}'),
+                Text('总数量: ${_formatNumber(_totalQuantity)} ${_selectedProductName != null ? productUnit : ""}'),
               ],
             ),
             SizedBox(height: 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('总进价: ¥${_totalPrice.toStringAsFixed(2)}'),
+                                 Text('总进价: ¥${_totalPrice.toStringAsFixed(2)}'),
                 if (_selectedProductName != null && _totalQuantity > 0)
                   Text('平均单价: ¥${(_totalPrice / _totalQuantity).toStringAsFixed(2)}/${productUnit}'),
               ],
@@ -722,13 +722,24 @@ class _PurchaseReportScreenState extends State<PurchaseReportScreen> {
   String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
+
+  // 格式化数字显示：整数显示为整数，小数显示为小数
+  String _formatNumber(dynamic number) {
+    if (number == null) return '0';
+    double value = number is double ? number : double.tryParse(number.toString()) ?? 0.0;
+    if (value == value.floor()) {
+      return value.toInt().toString();
+    } else {
+      return value.toString();
+    }
+  }
 }
 
 class PurchaseTableScreen extends StatelessWidget {
   final List<Map<String, dynamic>> purchases;
   final List<Map<String, dynamic>> suppliers;
   final List<Map<String, dynamic>> products;
-  final int totalQuantity;
+  final double totalQuantity;
   final double totalPrice;
 
   PurchaseTableScreen({
@@ -738,6 +749,17 @@ class PurchaseTableScreen extends StatelessWidget {
     required this.totalQuantity,
     required this.totalPrice,
   });
+
+  // 格式化数字显示：整数显示为整数，小数显示为小数
+  String _formatNumber(dynamic number) {
+    if (number == null) return '0';
+    double value = number is double ? number : double.tryParse(number.toString()) ?? 0.0;
+    if (value == value.floor()) {
+      return value.toInt().toString();
+    } else {
+      return value.toString();
+    }
+  }
 
   Future<void> _exportToCSV(BuildContext context) async {
     String csvData = '日期,产品,数量,单位,供应商,总进价,备注\n';
@@ -750,13 +772,13 @@ class PurchaseTableScreen extends StatelessWidget {
             (p) => p['name'] == purchase['productName'],
         orElse: () => {'unit': ''},
       );
-      csvData += '${purchase['purchaseDate']},${purchase['productName']},${purchase['quantity']},${product['unit']},${supplier['name']},${purchase['totalPurchasePrice']},${purchase['note'] ?? ''}\n';
+      csvData += '${purchase['purchaseDate']},${purchase['productName']},${_formatNumber(purchase['quantity'])},${product['unit']},${supplier['name']},${purchase['totalPurchasePrice']},${purchase['note'] ?? ''}\n';
     }
     
     // 添加统计信息
     csvData += '\n总计,,,,,\n';
     csvData += '记录数,${purchases.length}\n';
-    csvData += '总数量,${totalQuantity}\n';
+    csvData += '总数量,${_formatNumber(totalQuantity)}\n';
     csvData += '总进价,${totalPrice.toStringAsFixed(2)}\n';
 
     if (Platform.isMacOS || Platform.isWindows) {
@@ -865,7 +887,7 @@ class PurchaseTableScreen extends StatelessWidget {
                   Column(
                     children: [
                       Text('总数量', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
-                      Text('$totalQuantity', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                              Text('${_formatNumber(totalQuantity)}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ],
                   ),
                   Column(
@@ -954,7 +976,7 @@ class PurchaseTableScreen extends StatelessWidget {
                               cells: [
                     DataCell(Text(purchase['purchaseDate'])),
                     DataCell(Text(purchase['productName'])),
-                    DataCell(Text(purchase['quantity'].toString())),
+                    DataCell(Text(_formatNumber(purchase['quantity']))),
                     DataCell(Text(product['unit'])),
                     DataCell(Text(supplier['name'])),
                                 DataCell(

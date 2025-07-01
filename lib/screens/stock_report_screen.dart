@@ -34,6 +34,17 @@ class _StockReportScreenState extends State<StockReportScreen> {
     super.dispose();
   }
 
+  // 格式化数字显示，如果是整数则不显示小数点，如果是小数则显示小数部分
+  String _formatNumber(dynamic number) {
+    if (number == null) return '0';
+    double value = number is double ? number : double.tryParse(number.toString()) ?? 0.0;
+    if (value == value.floor()) {
+      return value.toInt().toString();
+    } else {
+      return value.toString();
+    }
+  }
+
   Future<void> _fetchData() async {
     final db = await DatabaseHelper().database;
     final prefs = await SharedPreferences.getInstance();
@@ -151,7 +162,9 @@ class _StockReportScreenState extends State<StockReportScreen> {
                       padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
               itemBuilder: (context, index) {
                         final product = _filteredProducts[index];
-                        final stockLevel = product['stock'];
+                        final stockLevel = (product['stock'] is double) 
+                            ? product['stock'] 
+                            : double.tryParse(product['stock'].toString()) ?? 0.0;
                         
                         // 根据库存量确定显示颜色
                         Color stockColor = Colors.black87;
@@ -211,7 +224,7 @@ class _StockReportScreenState extends State<StockReportScreen> {
                                             ),
                                           ),
                                           Text(
-                                            '${product['stock']} ${product['unit']}',
+                                            '${_formatNumber(product['stock'])} ${product['unit']}',
                                             style: TextStyle(
                                               fontSize: 14,
                                               fontWeight: FontWeight.bold,

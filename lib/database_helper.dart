@@ -44,7 +44,7 @@ class DatabaseHelper {
     
     return await openDatabase(
       path,
-      version: 4, // 更新版本号以触发数据库结构更新
+      version: 5, // 更新版本号以触发数据库结构更新 - 支持小数数量
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -64,7 +64,7 @@ class DatabaseHelper {
       userId INTEGER NOT NULL,
       name TEXT NOT NULL,
       description TEXT,
-      stock INTEGER,
+      stock REAL,
       unit TEXT NOT NULL CHECK(unit IN ('斤', '公斤', '袋')),
       FOREIGN KEY (userId) REFERENCES users (id),
       UNIQUE(userId, name)
@@ -95,7 +95,7 @@ class DatabaseHelper {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       userId INTEGER NOT NULL,
       productName TEXT NOT NULL,
-      quantity INTEGER,
+      quantity REAL,
       purchaseDate TEXT,
       supplierId INTEGER,
       totalPurchasePrice REAL,
@@ -110,7 +110,7 @@ class DatabaseHelper {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       userId INTEGER NOT NULL,
       productName TEXT NOT NULL,
-      quantity INTEGER,
+      quantity REAL,
       customerId INTEGER,
       saleDate TEXT,
       totalSalePrice REAL,
@@ -125,7 +125,7 @@ class DatabaseHelper {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       userId INTEGER NOT NULL,
       productName TEXT NOT NULL,
-      quantity INTEGER,
+      quantity REAL,
       customerId INTEGER,
       returnDate TEXT,
       totalReturnPrice REAL,

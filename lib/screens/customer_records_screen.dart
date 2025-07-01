@@ -32,6 +32,17 @@ class _CustomerRecordsScreenState extends State<CustomerRecordsScreen> {
     _fetchRecords();
   }
 
+  // 格式化数字显示：整数显示为整数，小数显示为小数
+  String _formatNumber(dynamic number) {
+    if (number == null) return '0';
+    double value = number is double ? number : double.tryParse(number.toString()) ?? 0.0;
+    if (value == value.floor()) {
+      return value.toInt().toString();
+    } else {
+      return value.toString();
+    }
+  }
+
   Future<void> _fetchRecords() async {
     final db = await DatabaseHelper().database;
     final prefs = await SharedPreferences.getInstance();
@@ -135,8 +146,8 @@ class _CustomerRecordsScreenState extends State<CustomerRecordsScreen> {
       
       // 根据类型决定数量正负
       String quantity = record['type'] == '购买'
-          ? record['quantity'].toString()
-          : '-${record['quantity']}';
+          ? _formatNumber(record['quantity'])
+          : '-${_formatNumber(record['quantity'])}';
           
       rows.add([
         record['date'],
@@ -393,8 +404,8 @@ class _CustomerRecordsScreenState extends State<CustomerRecordsScreen> {
                             
                             // 根据类型决定数量显示格式
                             String quantity = record['type'] == '购买'
-                                ? record['quantity'].toString()
-                                : '-${record['quantity']}';
+                                ? _formatNumber(record['quantity'])
+                                : '-${_formatNumber(record['quantity'])}';
                                 
                             return DataRow(
                               cells: [
