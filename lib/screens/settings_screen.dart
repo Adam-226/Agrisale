@@ -458,61 +458,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
           await txn.delete('remittance', where: 'userId = ?', whereArgs: [userId]);
           await txn.delete('user_settings', where: 'userId = ?', whereArgs: [userId]);
 
-          // 创建ID映射表来保持关联关系
+          // 创建ID映射表来保持关联关系（旧ID -> 新ID）
           Map<int, int> supplierIdMap = {};
           Map<int, int> customerIdMap = {};
           Map<int, int> productIdMap = {};
           Map<int, int> employeeIdMap = {};
 
-          // 恢复suppliers数据（保持原有ID以维护关联关系）
+          // 恢复suppliers数据（让数据库自动生成新ID）
           if (data['suppliers'] != null) {
             for (var supplier in data['suppliers']) {
               final supplierData = Map<String, dynamic>.from(supplier);
               final originalId = supplierData['id'] as int;
+              supplierData.remove('id'); // 移除原始ID，让数据库自动生成新ID
               supplierData['userId'] = userId;
               
-              // 使用原始ID插入
-              await txn.insert('suppliers', supplierData, conflictAlgorithm: ConflictAlgorithm.replace);
-              supplierIdMap[originalId] = originalId; // 保持映射关系
+              // 插入并获取新生成的ID
+              final newId = await txn.insert('suppliers', supplierData);
+              supplierIdMap[originalId] = newId; // 建立映射关系
             }
           }
 
-          // 恢复customers数据（保持原有ID以维护关联关系）
+          // 恢复customers数据（让数据库自动生成新ID）
           if (data['customers'] != null) {
             for (var customer in data['customers']) {
               final customerData = Map<String, dynamic>.from(customer);
               final originalId = customerData['id'] as int;
+              customerData.remove('id'); // 移除原始ID
               customerData['userId'] = userId;
               
-              // 使用原始ID插入
-              await txn.insert('customers', customerData, conflictAlgorithm: ConflictAlgorithm.replace);
-              customerIdMap[originalId] = originalId; // 保持映射关系
+              // 插入并获取新生成的ID
+              final newId = await txn.insert('customers', customerData);
+              customerIdMap[originalId] = newId; // 建立映射关系
             }
           }
 
-          // 恢复employees数据（保持原有ID以维护关联关系）
+          // 恢复employees数据（让数据库自动生成新ID）
           if (data['employees'] != null) {
             for (var employee in data['employees']) {
               final employeeData = Map<String, dynamic>.from(employee);
               final originalId = employeeData['id'] as int;
+              employeeData.remove('id'); // 移除原始ID
               employeeData['userId'] = userId;
               
-              // 使用原始ID插入
-              await txn.insert('employees', employeeData, conflictAlgorithm: ConflictAlgorithm.replace);
-              employeeIdMap[originalId] = originalId; // 保持映射关系
+              // 插入并获取新生成的ID
+              final newId = await txn.insert('employees', employeeData);
+              employeeIdMap[originalId] = newId; // 建立映射关系
             }
           }
 
-          // 恢复products数据（保持原有ID以维护关联关系）
+          // 恢复products数据（让数据库自动生成新ID）
           if (data['products'] != null) {
             for (var product in data['products']) {
               final productData = Map<String, dynamic>.from(product);
               final originalId = productData['id'] as int;
+              productData.remove('id'); // 移除原始ID
               productData['userId'] = userId;
               
-              // 使用原始ID插入
-              await txn.insert('products', productData, conflictAlgorithm: ConflictAlgorithm.replace);
-              productIdMap[originalId] = originalId; // 保持映射关系
+              // 插入并获取新生成的ID
+              final newId = await txn.insert('products', productData);
+              productIdMap[originalId] = newId; // 建立映射关系
             }
           }
 
@@ -520,17 +524,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
           if (data['purchases'] != null) {
             for (var purchase in data['purchases']) {
               final purchaseData = Map<String, dynamic>.from(purchase);
+              purchaseData.remove('id'); // 移除原始ID，让数据库自动生成
               purchaseData['userId'] = userId;
               
-              // 保持supplierId关联关系
+              // 更新supplierId关联关系
               if (purchaseData['supplierId'] != null) {
                 final originalSupplierId = purchaseData['supplierId'] as int;
                 if (supplierIdMap.containsKey(originalSupplierId)) {
                   purchaseData['supplierId'] = supplierIdMap[originalSupplierId];
+                } else {
+                  // 如果找不到映射关系，设为null
+                  purchaseData['supplierId'] = null;
                 }
               }
               
-              await txn.insert('purchases', purchaseData, conflictAlgorithm: ConflictAlgorithm.replace);
+              await txn.insert('purchases', purchaseData);
             }
           }
 
@@ -538,17 +546,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
           if (data['sales'] != null) {
             for (var sale in data['sales']) {
               final saleData = Map<String, dynamic>.from(sale);
+              saleData.remove('id'); // 移除原始ID
               saleData['userId'] = userId;
               
-              // 保持customerId关联关系
+              // 更新customerId关联关系
               if (saleData['customerId'] != null) {
                 final originalCustomerId = saleData['customerId'] as int;
                 if (customerIdMap.containsKey(originalCustomerId)) {
                   saleData['customerId'] = customerIdMap[originalCustomerId];
+                } else {
+                  // 如果找不到映射关系，设为null
+                  saleData['customerId'] = null;
                 }
               }
               
-              await txn.insert('sales', saleData, conflictAlgorithm: ConflictAlgorithm.replace);
+              await txn.insert('sales', saleData);
             }
           }
 
@@ -556,17 +568,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
           if (data['returns'] != null) {
             for (var returnItem in data['returns']) {
               final returnData = Map<String, dynamic>.from(returnItem);
+              returnData.remove('id'); // 移除原始ID
               returnData['userId'] = userId;
               
-              // 保持customerId关联关系
+              // 更新customerId关联关系
               if (returnData['customerId'] != null) {
                 final originalCustomerId = returnData['customerId'] as int;
                 if (customerIdMap.containsKey(originalCustomerId)) {
                   returnData['customerId'] = customerIdMap[originalCustomerId];
+                } else {
+                  // 如果找不到映射关系，设为null
+                  returnData['customerId'] = null;
                 }
               }
               
-              await txn.insert('returns', returnData, conflictAlgorithm: ConflictAlgorithm.replace);
+              await txn.insert('returns', returnData);
             }
           }
 
@@ -574,25 +590,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
           if (data['income'] != null) {
             for (var incomeItem in data['income']) {
               final incomeData = Map<String, dynamic>.from(incomeItem);
+              incomeData.remove('id'); // 移除原始ID
               incomeData['userId'] = userId;
               
-              // 保持customerId关联关系
+              // 更新customerId关联关系
               if (incomeData['customerId'] != null) {
                 final originalCustomerId = incomeData['customerId'] as int;
                 if (customerIdMap.containsKey(originalCustomerId)) {
                   incomeData['customerId'] = customerIdMap[originalCustomerId];
+                } else {
+                  incomeData['customerId'] = null;
                 }
               }
               
-              // 保持employeeId关联关系
+              // 更新employeeId关联关系
               if (incomeData['employeeId'] != null) {
                 final originalEmployeeId = incomeData['employeeId'] as int;
                 if (employeeIdMap.containsKey(originalEmployeeId)) {
                   incomeData['employeeId'] = employeeIdMap[originalEmployeeId];
+                } else {
+                  incomeData['employeeId'] = null;
                 }
               }
               
-              await txn.insert('income', incomeData, conflictAlgorithm: ConflictAlgorithm.replace);
+              await txn.insert('income', incomeData);
             }
           }
 
@@ -600,25 +621,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
           if (data['remittance'] != null) {
             for (var remittanceItem in data['remittance']) {
               final remittanceData = Map<String, dynamic>.from(remittanceItem);
+              remittanceData.remove('id'); // 移除原始ID
               remittanceData['userId'] = userId;
               
-              // 保持supplierId关联关系
+              // 更新supplierId关联关系
               if (remittanceData['supplierId'] != null) {
                 final originalSupplierId = remittanceData['supplierId'] as int;
                 if (supplierIdMap.containsKey(originalSupplierId)) {
                   remittanceData['supplierId'] = supplierIdMap[originalSupplierId];
+                } else {
+                  remittanceData['supplierId'] = null;
                 }
               }
               
-              // 保持employeeId关联关系
+              // 更新employeeId关联关系
               if (remittanceData['employeeId'] != null) {
                 final originalEmployeeId = remittanceData['employeeId'] as int;
                 if (employeeIdMap.containsKey(originalEmployeeId)) {
                   remittanceData['employeeId'] = employeeIdMap[originalEmployeeId];
+                } else {
+                  remittanceData['employeeId'] = null;
                 }
               }
               
-              await txn.insert('remittance', remittanceData, conflictAlgorithm: ConflictAlgorithm.replace);
+              await txn.insert('remittance', remittanceData);
             }
           }
 
@@ -626,7 +652,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           if (data['userSettings'] != null && (data['userSettings'] as List).isNotEmpty) {
             final userSettingsData = Map<String, dynamic>.from((data['userSettings'] as List).first);
             userSettingsData['userId'] = userId;
-            userSettingsData.remove('id'); // 用户设置可以让数据库自动生成新ID
+            userSettingsData.remove('id'); // 移除原始ID，让数据库自动生成新ID
             await txn.insert('user_settings', userSettingsData);
           }
         });
