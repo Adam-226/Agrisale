@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../database_helper.dart';
 import '../widgets/footer_widget.dart';
 import 'customer_records_screen.dart';
+import 'customer_transactions_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class CustomerScreen extends StatefulWidget {
@@ -225,6 +226,15 @@ class _CustomerScreenState extends State<CustomerScreen> {
     );
   }
 
+  void _viewCustomerTransactions(int customerId, String customerName) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CustomerTransactionsScreen(customerId: customerId, customerName: customerName),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -366,6 +376,17 @@ class _CustomerScreenState extends State<CustomerScreen> {
                                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      IconButton(
+                                        icon: Icon(Icons.account_balance_wallet, color: Colors.purple),
+                                        tooltip: '往来记录',
+                                        onPressed: () => _viewCustomerTransactions(
+                                          customer['id'] as int, 
+                                          customer['name'] as String
+                                        ),
+                                        constraints: BoxConstraints(),
+                                        padding: EdgeInsets.all(8),
+                      ),
+                                      SizedBox(width: 4),
                       IconButton(
                                         icon: Icon(Icons.list_alt, color: Colors.blue),
                                         tooltip: '查看记录',

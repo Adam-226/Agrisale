@@ -391,7 +391,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
       return value.toString();
     }
   }
-
+  
   // 格式化日期
   String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';

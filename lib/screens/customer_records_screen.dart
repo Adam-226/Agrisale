@@ -23,12 +23,24 @@ class CustomerRecordsScreen extends StatefulWidget {
 
 class _CustomerRecordsScreenState extends State<CustomerRecordsScreen> {
   List<Map<String, dynamic>> _records = [];
+  List<Map<String, dynamic>> _products = [];
   bool _isDescending = true;
   bool _salesFirst = true; // 控制购买在前还是退货在前
+  String? _selectedProduct = '所有产品'; // 产品筛选
+  bool _isSummaryExpanded = true; // 汇总信息是否展开
+  
+  // 汇总数据
+  double _totalPurchaseQuantity = 0.0;
+  double _totalPurchaseAmount = 0.0;
+  double _totalReturnQuantity = 0.0;
+  double _totalReturnAmount = 0.0;
+  double _netQuantity = 0.0;
+  double _netAmount = 0.0;
 
   @override
   void initState() {
     super.initState();
+    _fetchProducts();
     _fetchRecords();
   }
 
@@ -43,6 +55,22 @@ class _CustomerRecordsScreenState extends State<CustomerRecordsScreen> {
     }
   }
 
+  Future<void> _fetchProducts() async {
+    final db = await DatabaseHelper().database;
+    final prefs = await SharedPreferences.getInstance();
+    final username = prefs.getString('current_username');
+    
+    if (username != null) {
+      final userId = await DatabaseHelper().getCurrentUserId(username);
+      if (userId != null) {
+        final products = await db.query('products', where: 'userId = ?', whereArgs: [userId]);
+        setState(() {
+          _products = products;
+        });
+      }
+    }
+  }
+
   Future<void> _fetchRecords() async {
     final db = await DatabaseHelper().database;
     final prefs = await SharedPreferences.getInstance();
@@ -51,19 +79,22 @@ class _CustomerRecordsScreenState extends State<CustomerRecordsScreen> {
     if (username != null) {
       final userId = await DatabaseHelper().getCurrentUserId(username);
       if (userId != null) {
+        // 构建产品筛选条件
+        String productFilter = _selectedProduct != null && _selectedProduct != '所有产品'
+            ? "AND productName = '$_selectedProduct'"
+            : '';
+
         // 获取当前用户的销售记录
-        final sales = await db.query(
-          'sales',
-          where: 'customerId = ? AND userId = ?',
-          whereArgs: [widget.customerId, userId],
-        );
+        final sales = await db.rawQuery('''
+          SELECT * FROM sales 
+          WHERE customerId = ? AND userId = ? $productFilter
+        ''', [widget.customerId, userId]);
 
         // 获取当前用户的退货记录
-        final returns = await db.query(
-          'returns',
-          where: 'customerId = ? AND userId = ?',
-          whereArgs: [widget.customerId, userId],
-        );
+        final returns = await db.rawQuery('''
+          SELECT * FROM returns 
+          WHERE customerId = ? AND userId = ? $productFilter
+        ''', [widget.customerId, userId]);
 
         // 获取当前用户的产品信息
         final products = await db.query('products', where: 'userId = ?', whereArgs: [userId]);
@@ -117,11 +148,40 @@ class _CustomerRecordsScreenState extends State<CustomerRecordsScreen> {
           }
         });
 
+        // 计算汇总数据
+        _calculateSummary(combinedRecords);
+
         setState(() {
           _records = combinedRecords;
         });
       }
     }
+  }
+
+  void _calculateSummary(List<Map<String, dynamic>> records) {
+    double purchaseQuantity = 0.0;
+    double purchaseAmount = 0.0;
+    double returnQuantity = 0.0;
+    double returnAmount = 0.0;
+
+    for (var record in records) {
+      if (record['type'] == '购买') {
+        purchaseQuantity += (record['quantity'] as num).toDouble();
+        purchaseAmount += (record['totalPrice'] as num).toDouble();
+      } else if (record['type'] == '退货') {
+        returnQuantity += (record['quantity'] as num).toDouble();
+        returnAmount += (record['totalPrice'] as num).toDouble();
+      }
+    }
+
+    setState(() {
+      _totalPurchaseQuantity = purchaseQuantity;
+      _totalPurchaseAmount = purchaseAmount;
+      _totalReturnQuantity = returnQuantity;
+      _totalReturnAmount = returnAmount;
+      _netQuantity = purchaseQuantity - returnQuantity;
+      _netAmount = purchaseAmount - returnAmount;
+    });
   }
 
   Future<void> _exportToCSV() async {
@@ -134,6 +194,7 @@ class _CustomerRecordsScreenState extends State<CustomerRecordsScreen> {
     rows.add(['客户交易记录 - 用户: $username']);
     rows.add(['导出时间: ${DateTime.now().toString().substring(0, 19)}']);
     rows.add(['客户: ${widget.customerName}']);
+    rows.add(['产品筛选: $_selectedProduct']);
     rows.add([]); // 空行
     // 修改表头为中文
     rows.add(['日期', '类型', '产品', '数量', '单位', '金额', '备注']);
@@ -159,6 +220,16 @@ class _CustomerRecordsScreenState extends State<CustomerRecordsScreen> {
         record['note']
       ]);
     }
+
+    // 添加总计行
+    rows.add([]);
+    rows.add(['总计', '', '', 
+              _formatNumber(_netQuantity), 
+              _selectedProduct != '所有产品' 
+                  ? (_products.firstWhere((p) => p['name'] == _selectedProduct, orElse: () => {'unit': ''})['unit'] ?? '')
+                  : '', 
+              _netAmount.toStringAsFixed(2), 
+              '']);
 
     String csv = const ListToCsvConverter().convert(rows);
 
@@ -258,6 +329,58 @@ class _CustomerRecordsScreenState extends State<CustomerRecordsScreen> {
       ),
       body: Column(
         children: [
+          // 产品筛选条件
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            color: Colors.orange[50],
+            child: Row(
+              children: [
+                Icon(Icons.filter_alt, color: Colors.orange[700], size: 20),
+                SizedBox(width: 12),
+                Expanded(
+                  child: DropdownButtonHideUnderline(
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange[300]!),
+                        color: Colors.white,
+                      ),
+                      child: DropdownButton<String>(
+                        hint: Text('选择产品', style: TextStyle(color: Colors.black87)),
+                        value: _selectedProduct,
+                        isExpanded: true,
+                        icon: Icon(Icons.arrow_drop_down, color: Colors.orange[700]),
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            _selectedProduct = newValue;
+                            _fetchRecords();
+                          });
+                        },
+                        style: TextStyle(color: Colors.black87, fontSize: 15),
+                        items: [
+                          DropdownMenuItem<String>(
+                            value: '所有产品',
+                            child: Text('所有产品'),
+                          ),
+                          ..._products.map<DropdownMenuItem<String>>((product) {
+                            return DropdownMenuItem<String>(
+                              value: product['name'],
+                              child: Text(product['name']),
+                            );
+                          }).toList(),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // 汇总信息卡片
+          _buildSummaryCard(),
+
           Container(
             padding: EdgeInsets.all(12),
             color: Colors.orange[50],
@@ -340,7 +463,9 @@ class _CustomerRecordsScreenState extends State<CustomerRecordsScreen> {
                         ),
                         SizedBox(height: 8),
                         Text(
-                          '该客户还没有购买或退货记录',
+                          _selectedProduct == '所有产品' 
+                              ? '该客户还没有购买或退货记录'
+                              : '该客户还没有购买或退货 $_selectedProduct 的记录',
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey[500],
@@ -393,68 +518,70 @@ class _CustomerRecordsScreenState extends State<CustomerRecordsScreen> {
                             DataColumn(label: Text('金额')),
                   DataColumn(label: Text('备注')),
                 ],
-                          rows: _records.map((record) {
-                            // 设置颜色，购买为绿色，退货为红色
-                            Color textColor = record['type'] == '购买' ? Colors.green : Colors.red;
-                            
-                            // 根据类型决定金额正负
-                            String amount = record['type'] == '购买' 
-                                ? record['totalPrice'].toString() 
-                                : '-${record['totalPrice']}';
-                            
-                            // 根据类型决定数量显示格式
-                            String quantity = record['type'] == '购买'
-                                ? _formatNumber(record['quantity'])
-                                : '-${_formatNumber(record['quantity'])}';
-                                
-                            return DataRow(
-                              cells: [
-                  DataCell(Text(record['date'])),
-                                DataCell(
-                                  Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: record['type'] == '购买' 
-                                          ? Colors.green[50] 
-                                          : Colors.red[50],
-                                      borderRadius: BorderRadius.circular(4),
-                                      border: Border.all(
+                          rows: [
+                            // 数据行
+                            ..._records.map((record) {
+                              // 设置颜色，购买为绿色，退货为红色
+                              Color textColor = record['type'] == '购买' ? Colors.green : Colors.red;
+                              
+                              // 根据类型决定金额正负
+                              String amount = record['type'] == '购买' 
+                                  ? record['totalPrice'].toString() 
+                                  : '-${record['totalPrice']}';
+                              
+                              // 根据类型决定数量显示格式
+                              String quantity = record['type'] == '购买'
+                                  ? _formatNumber(record['quantity'])
+                                  : '-${_formatNumber(record['quantity'])}';
+                                  
+                              return DataRow(
+                                cells: [
+                    DataCell(Text(record['date'])),
+                                  DataCell(
+                                    Container(
+                                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
                                         color: record['type'] == '购买' 
-                                            ? Colors.green[300]! 
-                                            : Colors.red[300]!,
-                                        width: 1,
+                                            ? Colors.green[50] 
+                                            : Colors.red[50],
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(
+                                          color: record['type'] == '购买' 
+                                              ? Colors.green[300]! 
+                                              : Colors.red[300]!,
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        record['type'],
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: textColor,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
-                                    child: Text(
-                                      record['type'],
+                                  ),
+                    DataCell(Text(record['productName'])),
+                                  DataCell(
+                                    Text(
+                                      quantity,
                                       style: TextStyle(
-                                        fontSize: 12,
                                         color: textColor,
                                         fontWeight: FontWeight.bold,
                                       ),
+                                    )
+                                  ),
+                    DataCell(Text(record['unit'] ?? '')),
+                                  DataCell(
+                                    Text(
+                                      amount,
+                                      style: TextStyle(
+                                        color: textColor, 
+                                        fontWeight: FontWeight.bold
+                                      ),
                                     ),
                                   ),
-                                ),
-                  DataCell(Text(record['productName'])),
-                                DataCell(
-                                  Text(
-                                    quantity,
-                                    style: TextStyle(
-                                      color: textColor,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  )
-                                ),
-                  DataCell(Text(record['unit'] ?? '')),
-                                DataCell(
-                                  Text(
-                                    amount,
-                                    style: TextStyle(
-                                      color: textColor, 
-                                      fontWeight: FontWeight.bold
-                                    ),
-                                  ),
-                                ),
                                 DataCell(
                                   record['note'].toString().isNotEmpty
                                       ? Text(
@@ -469,6 +596,64 @@ class _CustomerRecordsScreenState extends State<CustomerRecordsScreen> {
                               ],
                             );
                           }).toList(),
+                            
+                            // 总计行
+                            if (_records.isNotEmpty)
+                              DataRow(
+                                color: MaterialStateProperty.all(Colors.grey[100]),
+                                cells: [
+                                  DataCell(Text('')), // 日期列
+                                  DataCell(
+                                    Container(
+                                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue[50],
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(color: Colors.blue[300]!, width: 1),
+                                      ),
+                                      child: Text(
+                                        '总计',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.blue[800],
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  DataCell(Text('')), // 产品列
+                                  DataCell(
+                                    Text(
+                                      '${_netQuantity >= 0 ? '+' : ''}${_formatNumber(_netQuantity)}',
+                                      style: TextStyle(
+                                        color: _netQuantity >= 0 ? Colors.green : Colors.red,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      _selectedProduct != '所有产品' 
+                                          ? (_products.firstWhere((p) => p['name'] == _selectedProduct, orElse: () => {'unit': ''})['unit'] ?? '')
+                                          : '',
+                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      '${_netAmount >= 0 ? '+' : ''}¥${_netAmount.toStringAsFixed(2)}',
+                                      style: TextStyle(
+                                        color: _netAmount >= 0 ? Colors.green : Colors.red,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                  DataCell(Text('')), // 备注列
+                                ],
+                              ),
+                          ],
                         ),
                       ),
               ),
@@ -477,6 +662,141 @@ class _CustomerRecordsScreenState extends State<CustomerRecordsScreen> {
           FooterWidget(),
         ],
       ),
+    );
+  }
+
+  // 汇总信息卡片
+  Widget _buildSummaryCard() {
+    return Card(
+      margin: EdgeInsets.all(8),
+      elevation: 2,
+      color: Colors.orange[50],
+      child: Padding(
+        padding: EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 客户信息和汇总信息标题
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.person, color: Colors.orange, size: 16),
+                    SizedBox(width: 8),
+                    Text(
+                      '${widget.customerName} - ${_selectedProduct ?? '所有产品'}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange[800],
+                      ),
+                    ),
+                  ],
+                ),
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      _isSummaryExpanded = !_isSummaryExpanded;
+                    });
+                  },
+                  child: Row(
+                    children: [
+                      Text(
+                        '汇总信息',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange[800],
+                        ),
+                      ),
+                      SizedBox(width: 4),
+                      Icon(
+                        _isSummaryExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                        size: 16,
+                        color: Colors.orange[800],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (_isSummaryExpanded) ...[
+              Divider(height: 16, thickness: 1),
+              
+              // 记录数和净值
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildSummaryItem('交易记录数', '${_records.length}', Colors.purple),
+                  _buildSummaryItem('净数量', '${_netQuantity >= 0 ? '+' : ''}${_formatNumber(_netQuantity)}', _netQuantity >= 0 ? Colors.green : Colors.red),
+                ],
+              ),
+              SizedBox(height: 12),
+              
+              // 购买和退货数量汇总
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildSummaryItem('购买总量', '+${_formatNumber(_totalPurchaseQuantity)}', Colors.green),
+                  _buildSummaryItem('退货总量', '-${_formatNumber(_totalReturnQuantity)}', Colors.red),
+                ],
+              ),
+              SizedBox(height: 12),
+              
+              // 购买和退货金额汇总
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildSummaryItem('购买总额', '+¥${_totalPurchaseAmount.toStringAsFixed(2)}', Colors.green),
+                  _buildSummaryItem('退货总额', '-¥${_totalReturnAmount.toStringAsFixed(2)}', Colors.red),
+                ],
+              ),
+              
+              Divider(height: 16, thickness: 1),
+              
+              // 净收入
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('净收入: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text(
+                    '${_netAmount >= 0 ? '+' : ''}¥${_netAmount.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      color: _netAmount >= 0 ? Colors.green : Colors.red,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryItem(String label, String value, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[700],
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
     );
   }
 }

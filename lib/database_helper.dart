@@ -44,7 +44,7 @@ class DatabaseHelper {
     
     return await openDatabase(
       path,
-      version: 5, // 更新版本号以触发数据库结构更新 - 支持小数数量
+      version: 10, // 更新版本号以触发数据库结构更新 - 添加进账表的discount字段
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -88,6 +88,47 @@ class DatabaseHelper {
       note TEXT,
       FOREIGN KEY (userId) REFERENCES users (id),
       UNIQUE(userId, name)
+    )
+  ''');
+    await db.execute('''
+    CREATE TABLE employees (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      note TEXT,
+      FOREIGN KEY (userId) REFERENCES users (id),
+      UNIQUE(userId, name)
+    )
+  ''');
+    await db.execute('''
+    CREATE TABLE income (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId INTEGER NOT NULL,
+      incomeDate TEXT NOT NULL,
+      customerId INTEGER,
+      amount REAL NOT NULL,
+      discount REAL DEFAULT 0,
+      employeeId INTEGER,
+      paymentMethod TEXT NOT NULL CHECK(paymentMethod IN ('现金', '微信转账', '银行卡')),
+      note TEXT,
+      FOREIGN KEY (userId) REFERENCES users (id),
+      FOREIGN KEY (customerId) REFERENCES customers (id),
+      FOREIGN KEY (employeeId) REFERENCES employees (id)
+    )
+  ''');
+    await db.execute('''
+    CREATE TABLE remittance (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId INTEGER NOT NULL,
+      remittanceDate TEXT NOT NULL,
+      supplierId INTEGER,
+      amount REAL NOT NULL,
+      employeeId INTEGER,
+      paymentMethod TEXT NOT NULL CHECK(paymentMethod IN ('现金', '微信转账', '银行卡')),
+      note TEXT,
+      FOREIGN KEY (userId) REFERENCES users (id),
+      FOREIGN KEY (supplierId) REFERENCES suppliers (id),
+      FOREIGN KEY (employeeId) REFERENCES employees (id)
     )
   ''');
     await db.execute('''
@@ -158,6 +199,9 @@ class DatabaseHelper {
       await db.execute('DROP TABLE IF EXISTS products');
       await db.execute('DROP TABLE IF EXISTS suppliers');
       await db.execute('DROP TABLE IF EXISTS customers');
+      await db.execute('DROP TABLE IF EXISTS employees');
+      await db.execute('DROP TABLE IF EXISTS income');
+      await db.execute('DROP TABLE IF EXISTS remittance');
       await db.execute('DROP TABLE IF EXISTS purchases');
       await db.execute('DROP TABLE IF EXISTS sales');
       await db.execute('DROP TABLE IF EXISTS returns');

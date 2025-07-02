@@ -19,6 +19,8 @@ class _MainScreenState extends State<MainScreen> {
         {'name': '采购', 'icon': Icons.shopping_cart, 'route': '/purchases'},
         {'name': '销售', 'icon': Icons.point_of_sale, 'route': '/sales'},
         {'name': '退货', 'icon': Icons.assignment_return, 'route': '/returns'},
+        {'name': '进账', 'icon': Icons.account_balance_wallet, 'route': '/income'},
+        {'name': '汇款', 'icon': Icons.send, 'route': '/remittance'},
       ]
     },
     {
@@ -26,6 +28,7 @@ class _MainScreenState extends State<MainScreen> {
       'items': [
         {'name': '客户', 'icon': Icons.people, 'route': '/customers'},
         {'name': '供应商', 'icon': Icons.business, 'route': '/suppliers'},
+        {'name': '员工', 'icon': Icons.badge, 'route': '/employees'},
       ]
     },
   ];
@@ -40,6 +43,8 @@ class _MainScreenState extends State<MainScreen> {
         {'name': '销售报告', 'icon': Icons.bar_chart, 'route': '/sales_report'},
         {'name': '退货报告', 'icon': Icons.assignment_return, 'route': '/returns_report'},
         {'name': '总销售报告', 'icon': Icons.bar_chart, 'route': '/total_sales_report'},
+        {'name': '总销售-进账明细', 'icon': Icons.compare_arrows, 'route': '/sales_income_analysis'},
+        {'name': '采购-汇款明细', 'icon': Icons.sync_alt, 'route': '/purchase_remittance_analysis'},
         {'name': '财务统计', 'icon': Icons.attach_money, 'route': '/financial_statistics'},
       ]
     },

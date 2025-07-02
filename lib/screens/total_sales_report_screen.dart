@@ -474,8 +474,8 @@ class _TotalSalesReportScreenState extends State<TotalSalesReportScreen> {
        return value.toInt().toString();
      } else {
        return value.toString();
-     }
-   }
+    }
+  }
   
   // 格式化日期
   String _formatDate(DateTime date) {
@@ -784,7 +784,7 @@ class _TotalSalesReportScreenState extends State<TotalSalesReportScreen> {
                 if (_startDate != null || _endDate != null)
                   Chip(
                     label: Text(
-                                             '时间: ${_startDate != null ? _formatDate(_startDate!) : '无限制'} 至 ${_endDate != null ? _formatDate(_endDate!) : '无限制'}'
+                      '时间: ${_startDate != null ? _formatDate(_startDate!) : '无限制'} 至 ${_endDate != null ? _formatDate(_endDate!) : '无限制'}'
                     ),
                     deleteIcon: Icon(Icons.close, size: 18),
                     onDeleted: () {

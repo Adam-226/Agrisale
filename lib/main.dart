@@ -18,6 +18,11 @@ import 'screens/total_sales_report_screen.dart';
 import 'screens/financial_statistics_screen.dart';
 import 'screens/customer_screen.dart';
 import 'screens/supplier_screen.dart';
+import 'screens/employee_screen.dart';
+import 'screens/income_screen.dart';
+import 'screens/remittance_screen.dart';
+import 'screens/sales_income_analysis_screen.dart';
+import 'screens/purchase_remittance_analysis_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/data_assistant_screen.dart';
 
@@ -90,14 +95,19 @@ class MyApp extends StatelessWidget {
         '/purchases': (context) => PurchaseScreen(),
         '/sales': (context) => SalesScreen(),
         '/returns': (context) => ReturnsScreen(),
+        '/income': (context) => IncomeScreen(),
+        '/remittance': (context) => RemittanceScreen(),
         '/stock_report': (context) => StockReportScreen(),
         '/purchase_report': (context) => PurchaseReportScreen(),
         '/sales_report': (context) => SalesReportScreen(),
         '/returns_report': (context) => ReturnsReportScreen(),
         '/total_sales_report': (context) => TotalSalesReportScreen(),
+        '/sales_income_analysis': (context) => SalesIncomeAnalysisScreen(),
+        '/purchase_remittance_analysis': (context) => PurchaseRemittanceAnalysisScreen(),
         '/financial_statistics': (context) => FinancialStatisticsScreen(),
         '/customers': (context) => CustomerScreen(),
         '/suppliers': (context) => SupplierScreen(),
+        '/employees': (context) => EmployeeScreen(),
         '/settings': (context) => SettingsScreen(),
         '/data_assistant': (context) => DataAssistantScreen(),
       },

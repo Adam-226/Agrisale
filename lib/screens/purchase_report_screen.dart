@@ -529,12 +529,35 @@ class _PurchaseReportScreenState extends State<PurchaseReportScreen> {
                                   ],
                                 ),
                                 SizedBox(height: 8),
-                                Text(
+                                Row(
+                                  children: [
+                                    // 添加采购/退货标识
+                                    Container(
+                                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: (purchase['quantity'] as double) >= 0 ? Colors.green[100] : Colors.red[100],
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        (purchase['quantity'] as double) >= 0 ? '采购' : '退货',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: (purchase['quantity'] as double) >= 0 ? Colors.green[800] : Colors.red[800],
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
                                   purchase['productName'],
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 15,
                                   ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 SizedBox(height: 6),
                                 Row(
@@ -544,8 +567,12 @@ class _PurchaseReportScreenState extends State<PurchaseReportScreen> {
                                          color: Colors.blue[700]),
                                     SizedBox(width: 4),
                                     Text(
-                                      '数量: ${_formatNumber(purchase['quantity'])} ${product['unit']}',
-                                      style: TextStyle(fontSize: 13),
+                                      '数量: ${(purchase['quantity'] as double) >= 0 ? '' : '-'}${_formatNumber((purchase['quantity'] as double).abs())} ${product['unit']}',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: (purchase['quantity'] as double) >= 0 ? Colors.black87 : Colors.red[700],
+                                        fontWeight: (purchase['quantity'] as double) >= 0 ? FontWeight.normal : FontWeight.bold,
+                                      ),
                                     ),
                                     SizedBox(width: 16),
                                     Icon(Icons.business, 
@@ -700,15 +727,27 @@ class _PurchaseReportScreenState extends State<PurchaseReportScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('总记录数: ${_purchases.length}'),
-                Text('总数量: ${_formatNumber(_totalQuantity)} ${_selectedProductName != null ? productUnit : ""}'),
+                Text(
+                  '净数量: ${_formatNumber(_totalQuantity)} ${_selectedProductName != null ? productUnit : ""}',
+                  style: TextStyle(
+                    color: _totalQuantity >= 0 ? Colors.black87 : Colors.red[700],
+                    fontWeight: _totalQuantity >= 0 ? FontWeight.normal : FontWeight.bold,
+                  ),
+                ),
               ],
             ),
             SizedBox(height: 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                                 Text('总进价: ¥${_totalPrice.toStringAsFixed(2)}'),
-                if (_selectedProductName != null && _totalQuantity > 0)
+                Text(
+                  '总进价: ¥${_totalPrice.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    color: _totalPrice >= 0 ? Colors.green[700] : Colors.red[700],
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (_selectedProductName != null && _totalQuantity != 0)
                   Text('平均单价: ¥${(_totalPrice / _totalQuantity).toStringAsFixed(2)}/${productUnit}'),
               ],
             ),
@@ -762,7 +801,7 @@ class PurchaseTableScreen extends StatelessWidget {
   }
 
   Future<void> _exportToCSV(BuildContext context) async {
-    String csvData = '日期,产品,数量,单位,供应商,总进价,备注\n';
+    String csvData = '日期,类型,产品,数量,单位,供应商,总进价,备注\n';
     for (var purchase in purchases) {
       final supplier = suppliers.firstWhere(
             (s) => s['id'] == purchase['supplierId'],
@@ -772,13 +811,15 @@ class PurchaseTableScreen extends StatelessWidget {
             (p) => p['name'] == purchase['productName'],
         orElse: () => {'unit': ''},
       );
-      csvData += '${purchase['purchaseDate']},${purchase['productName']},${_formatNumber(purchase['quantity'])},${product['unit']},${supplier['name']},${purchase['totalPurchasePrice']},${purchase['note'] ?? ''}\n';
+      final type = (purchase['quantity'] as double) >= 0 ? '采购' : '退货';
+      final quantity = (purchase['quantity'] as double) >= 0 ? _formatNumber(purchase['quantity']) : '-${_formatNumber((purchase['quantity'] as double).abs())}';
+      csvData += '${purchase['purchaseDate']},$type,${purchase['productName']},$quantity,${product['unit']},${supplier['name']},${purchase['totalPurchasePrice']},${purchase['note'] ?? ''}\n';
     }
     
     // 添加统计信息
-    csvData += '\n总计,,,,,\n';
+    csvData += '\n总计,,,,,,\n';
     csvData += '记录数,${purchases.length}\n';
-    csvData += '总数量,${_formatNumber(totalQuantity)}\n';
+    csvData += '净数量,${_formatNumber(totalQuantity)}\n';
     csvData += '总进价,${totalPrice.toStringAsFixed(2)}\n';
 
     if (Platform.isMacOS || Platform.isWindows) {
@@ -886,8 +927,15 @@ class PurchaseTableScreen extends StatelessWidget {
                   ),
                   Column(
                     children: [
-                      Text('总数量', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
-                                              Text('${_formatNumber(totalQuantity)}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        Text('净数量', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+                        Text(
+                          '${_formatNumber(totalQuantity)}', 
+                          style: TextStyle(
+                            fontSize: 16, 
+                            fontWeight: FontWeight.bold,
+                            color: totalQuantity >= 0 ? Colors.black87 : Colors.red[700],
+                          ),
+                        ),
                     ],
                   ),
                   Column(
@@ -956,6 +1004,7 @@ class PurchaseTableScreen extends StatelessWidget {
                           dividerThickness: 1,
                 columns: [
                   DataColumn(label: Text('日期')),
+                  DataColumn(label: Text('类型')),
                   DataColumn(label: Text('产品')),
                   DataColumn(label: Text('数量')),
                   DataColumn(label: Text('单位')),
@@ -975,8 +1024,33 @@ class PurchaseTableScreen extends StatelessWidget {
                             return DataRow(
                               cells: [
                     DataCell(Text(purchase['purchaseDate'])),
+                    DataCell(
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: (purchase['quantity'] as double) >= 0 ? Colors.green[100] : Colors.red[100],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          (purchase['quantity'] as double) >= 0 ? '采购' : '退货',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: (purchase['quantity'] as double) >= 0 ? Colors.green[800] : Colors.red[800],
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
                     DataCell(Text(purchase['productName'])),
-                    DataCell(Text(_formatNumber(purchase['quantity']))),
+                    DataCell(
+                      Text(
+                        '${(purchase['quantity'] as double) >= 0 ? '' : '-'}${_formatNumber((purchase['quantity'] as double).abs())}',
+                        style: TextStyle(
+                          color: (purchase['quantity'] as double) >= 0 ? Colors.black87 : Colors.red[700],
+                          fontWeight: (purchase['quantity'] as double) >= 0 ? FontWeight.normal : FontWeight.bold,
+                        ),
+                      ),
+                    ),
                     DataCell(Text(product['unit'])),
                     DataCell(Text(supplier['name'])),
                                 DataCell(

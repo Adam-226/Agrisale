@@ -204,13 +204,24 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
       if (username != null) {
         final userId = await DatabaseHelper().getCurrentUserId(username);
         if (userId != null) {
+          final product = _products.firstWhere((p) => p['name'] == result['productName']);
+          final quantity = result['quantity'] as double;
+          
+          // 如果是负数（采购退货），检查库存是否足够
+          if (quantity < 0) {
+            final currentStock = product['stock'] as double;
+            if (currentStock < quantity.abs()) {
+              _showErrorDialog('库存不足！当前库存: ${_formatNumber(currentStock)} ${product['unit']}，无法退货 ${_formatNumber(quantity.abs())} ${product['unit']}');
+              return;
+            }
+          }
+          
           // 添加userId到采购记录
           result['userId'] = userId;
           await db.insert('purchases', result);
 
-          // Update product stock - 确保只更新当前用户的产品
-          final product = _products.firstWhere((p) => p['name'] == result['productName']);
-          final newStock = product['stock'] + result['quantity'];
+          // Update product stock - 采购为正数增加库存，退货为负数减少库存
+          final newStock = product['stock'] + quantity;
           await db.update(
             'products',
             {'stock': newStock},
@@ -335,8 +346,10 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
           // 只删除当前用户的采购记录
           await db.delete('purchases', where: 'id = ? AND userId = ?', whereArgs: [purchase['id'], userId]);
 
-          // Rollback stock - 确保只更新当前用户的产品
-          final newStock = product['stock'] - purchase['quantity'];
+          // Rollback stock - 删除采购记录时反向操作库存
+          // 如果原记录是正数采购，删除时减少库存；如果是负数退货，删除时增加库存
+          final quantity = purchase['quantity'] as double;
+          final newStock = product['stock'] - quantity;
           await db.update(
             'products',
             {'stock': newStock},
@@ -659,12 +672,35 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
                                     Expanded(
+                                      child: Row(
+                                        children: [
+                                          // 添加采购/退货标识
+                                          Container(
+                                            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: (purchase['quantity'] as double) >= 0 ? Colors.green[100] : Colors.red[100],
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                            child: Text(
+                                              (purchase['quantity'] as double) >= 0 ? '采购' : '退货',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                color: (purchase['quantity'] as double) >= 0 ? Colors.green[800] : Colors.red[800],
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                          SizedBox(width: 8),
+                                    Expanded(
                                       child: Text(
                                         purchase['productName'],
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 15,
                                         ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                     Column(
@@ -725,11 +761,15 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                                   children: [
                                     Icon(Icons.inventory_2, 
                                          size: 14, 
-                                         color: Colors.green[700]),
+                                         color: (purchase['quantity'] as double) >= 0 ? Colors.green[700] : Colors.red[700]),
                                     SizedBox(width: 4),
                                     Text(
-                                      '数量: ${_formatNumber(purchase['quantity'])} ${product['unit']}',
-                                      style: TextStyle(fontSize: 13),
+                                      '数量: ${(purchase['quantity'] as double) >= 0 ? '' : '-'}${_formatNumber((purchase['quantity'] as double).abs())} ${product['unit']}',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: (purchase['quantity'] as double) >= 0 ? Colors.black87 : Colors.red[700],
+                                        fontWeight: (purchase['quantity'] as double) >= 0 ? FontWeight.normal : FontWeight.bold,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -975,7 +1015,7 @@ class _PurchaseDialogState extends State<PurchaseDialog> {
 
     return AlertDialog(
       title: Text(
-        '添加采购',
+        '添加采购/退货',
         style: TextStyle(fontWeight: FontWeight.bold),
       ),
       content: Form(
@@ -1057,7 +1097,7 @@ class _PurchaseDialogState extends State<PurchaseDialog> {
               controller: _quantityController,
                       decoration: InputDecoration(
                         labelText: '数量',
-                        helperText: unit.isNotEmpty ? '单位: $unit' : '',
+                        helperText: unit.isNotEmpty ? '单位: $unit，负数表示退货' : '负数表示退货',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -1065,7 +1105,7 @@ class _PurchaseDialogState extends State<PurchaseDialog> {
                         fillColor: Colors.grey[50],
                         prefixIcon: Icon(Icons.format_list_numbered, color: Colors.green),
                       ),
-                      keyboardType: TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: TextInputType.numberWithOptions(decimal: true, signed: true),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return '请输入数量';
@@ -1073,8 +1113,8 @@ class _PurchaseDialogState extends State<PurchaseDialog> {
                         if (double.tryParse(value) == null) {
                           return '请输入有效数字';
                         }
-                        if (double.parse(value) <= 0) {
-                          return '数量必须大于0';
+                        if (double.parse(value) == 0) {
+                          return '数量不能为0';
                         }
                         return null;
                       },
@@ -1149,6 +1189,32 @@ class _PurchaseDialogState extends State<PurchaseDialog> {
                       Icon(Icons.arrow_drop_down),
                     ],
                   ),
+                ),
+              ),
+              SizedBox(height: 16),
+              
+              // 添加说明信息
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue[200]!),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue[700], size: 16),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '正数表示采购入库，负数表示采购退货',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue[800],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               SizedBox(height: 16),

@@ -193,7 +193,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final username = prefs.getString('current_username');
       
       if (username == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('请先登录')),
         );
         return;
@@ -229,9 +229,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final products = await db.query('products', where: 'userId = ?', whereArgs: [userId]);
       final suppliers = await db.query('suppliers', where: 'userId = ?', whereArgs: [userId]);
       final customers = await db.query('customers', where: 'userId = ?', whereArgs: [userId]);
+      final employees = await db.query('employees', where: 'userId = ?', whereArgs: [userId]);
       final purchases = await db.query('purchases', where: 'userId = ?', whereArgs: [userId]);
       final sales = await db.query('sales', where: 'userId = ?', whereArgs: [userId]);
       final returns = await db.query('returns', where: 'userId = ?', whereArgs: [userId]);
+      final income = await db.query('income', where: 'userId = ?', whereArgs: [userId]);
+      final remittance = await db.query('remittance', where: 'userId = ?', whereArgs: [userId]);
       final userSettings = await db.query('user_settings', where: 'userId = ?', whereArgs: [userId]);
       
       // 构建导出数据
@@ -239,15 +242,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'exportInfo': {
           'username': username,
           'exportTime': DateTime.now().toIso8601String(),
-          'version': '1.0.0',
+          'version': '2.0.0', // 更新版本号以标识包含新表
         },
         'data': {
           'products': products,
           'suppliers': suppliers,
           'customers': customers,
+          'employees': employees,
           'purchases': purchases,
           'sales': sales,
           'returns': returns,
+          'income': income,
+          'remittance': remittance,
           'userSettings': userSettings,
         }
       };
@@ -383,6 +389,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Text('数据来源：${importData['exportInfo']['username'] ?? '未知'}'),
                 Text('导出时间：${importData['exportInfo']['exportTime'] ?? '未知'}'),
+                Text('数据版本：${importData['exportInfo']['version'] ?? '未知'}'),
                 SizedBox(height: 16),
                 Text(
                   '警告：此操作将清除当前用户的所有数据并替换为备份数据，此操作不可撤销！',
@@ -397,7 +404,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               ElevatedButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                ),
                 child: Text('确认恢复'),
               ),
             ],
@@ -440,15 +450,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
           await txn.delete('products', where: 'userId = ?', whereArgs: [userId]);
           await txn.delete('suppliers', where: 'userId = ?', whereArgs: [userId]);
           await txn.delete('customers', where: 'userId = ?', whereArgs: [userId]);
+          await txn.delete('employees', where: 'userId = ?', whereArgs: [userId]);
           await txn.delete('purchases', where: 'userId = ?', whereArgs: [userId]);
           await txn.delete('sales', where: 'userId = ?', whereArgs: [userId]);
           await txn.delete('returns', where: 'userId = ?', whereArgs: [userId]);
+          await txn.delete('income', where: 'userId = ?', whereArgs: [userId]);
+          await txn.delete('remittance', where: 'userId = ?', whereArgs: [userId]);
           await txn.delete('user_settings', where: 'userId = ?', whereArgs: [userId]);
 
           // 创建ID映射表来保持关联关系
           Map<int, int> supplierIdMap = {};
           Map<int, int> customerIdMap = {};
           Map<int, int> productIdMap = {};
+          Map<int, int> employeeIdMap = {};
 
           // 恢复suppliers数据（保持原有ID以维护关联关系）
           if (data['suppliers'] != null) {
@@ -473,6 +487,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // 使用原始ID插入
               await txn.insert('customers', customerData, conflictAlgorithm: ConflictAlgorithm.replace);
               customerIdMap[originalId] = originalId; // 保持映射关系
+            }
+          }
+
+          // 恢复employees数据（保持原有ID以维护关联关系）
+          if (data['employees'] != null) {
+            for (var employee in data['employees']) {
+              final employeeData = Map<String, dynamic>.from(employee);
+              final originalId = employeeData['id'] as int;
+              employeeData['userId'] = userId;
+              
+              // 使用原始ID插入
+              await txn.insert('employees', employeeData, conflictAlgorithm: ConflictAlgorithm.replace);
+              employeeIdMap[originalId] = originalId; // 保持映射关系
             }
           }
 
@@ -540,6 +567,58 @@ class _SettingsScreenState extends State<SettingsScreen> {
               }
               
               await txn.insert('returns', returnData, conflictAlgorithm: ConflictAlgorithm.replace);
+            }
+          }
+
+          // 恢复income数据（进账记录）
+          if (data['income'] != null) {
+            for (var incomeItem in data['income']) {
+              final incomeData = Map<String, dynamic>.from(incomeItem);
+              incomeData['userId'] = userId;
+              
+              // 保持customerId关联关系
+              if (incomeData['customerId'] != null) {
+                final originalCustomerId = incomeData['customerId'] as int;
+                if (customerIdMap.containsKey(originalCustomerId)) {
+                  incomeData['customerId'] = customerIdMap[originalCustomerId];
+                }
+              }
+              
+              // 保持employeeId关联关系
+              if (incomeData['employeeId'] != null) {
+                final originalEmployeeId = incomeData['employeeId'] as int;
+                if (employeeIdMap.containsKey(originalEmployeeId)) {
+                  incomeData['employeeId'] = employeeIdMap[originalEmployeeId];
+                }
+              }
+              
+              await txn.insert('income', incomeData, conflictAlgorithm: ConflictAlgorithm.replace);
+            }
+          }
+
+          // 恢复remittance数据（汇款记录）
+          if (data['remittance'] != null) {
+            for (var remittanceItem in data['remittance']) {
+              final remittanceData = Map<String, dynamic>.from(remittanceItem);
+              remittanceData['userId'] = userId;
+              
+              // 保持supplierId关联关系
+              if (remittanceData['supplierId'] != null) {
+                final originalSupplierId = remittanceData['supplierId'] as int;
+                if (supplierIdMap.containsKey(originalSupplierId)) {
+                  remittanceData['supplierId'] = supplierIdMap[originalSupplierId];
+                }
+              }
+              
+              // 保持employeeId关联关系
+              if (remittanceData['employeeId'] != null) {
+                final originalEmployeeId = remittanceData['employeeId'] as int;
+                if (employeeIdMap.containsKey(originalEmployeeId)) {
+                  remittanceData['employeeId'] = employeeIdMap[originalEmployeeId];
+                }
+              }
+              
+              await txn.insert('remittance', remittanceData, conflictAlgorithm: ConflictAlgorithm.replace);
             }
           }
 
