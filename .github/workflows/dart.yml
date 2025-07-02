@@ -186,9 +186,9 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.VERSION_TAG }}
-          name: "农资销售管理系统 ${{ env.VERSION_TAG }}"
+          name: "Agrisale ${{ env.VERSION_TAG }}"
           body: |
-            ## 🎉 农资销售管理系统 ${{ env.VERSION_TAG }}
+            ## 🎉 Agrisale ${{ env.VERSION_TAG }}
             
             ### 📱 支持平台
             - **iOS**: iPhone 和 iPad
