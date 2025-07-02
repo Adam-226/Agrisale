@@ -1,34 +1,24 @@
 # AgriSale
 
-A cross-platform Flutter application for agricultural sales management.
+A Flutter app for managing agricultural sales and inventory.
 
-## Features
+## What it does
 
-- 🌾 **Product Management** - Manage agricultural products inventory
-- 👥 **Customer & Supplier Management** - Track customers and suppliers
-- 💰 **Sales & Purchase Tracking** - Record sales and purchase transactions
-- 📊 **Financial Analysis** - Comprehensive reports and analytics
-- 👤 **Multi-User Support** - User authentication and data isolation
-- 💾 **Data Export** - Export reports to CSV format
-- 🔄 **Returns Management** - Handle product returns and exchanges
+AgriSale helps track products, customers, suppliers, and sales transactions. It includes basic reporting features and supports multiple users.
 
-## Platform Support
+## Main features
 
-- ✅ Windows
-- ✅ macOS  
-- ✅ iOS
-- ✅ Android
+- Product inventory management
+- Customer and supplier records
+- Sales and purchase tracking
+- Transaction history and reports
+- Data export functionality
+- User authentication
 
-## Getting Started
+## Platforms
 
-1. Clone the repository
-2. Install Flutter dependencies: `flutter pub get`
-3. Run the app: `flutter run`
+Works on Windows, macOS, iOS, and Android.
 
 ## License
 
-Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
-
-## Author
-
-© 2025 Adam
+Apache License 2.0
