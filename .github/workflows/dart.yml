@@ -8,7 +8,7 @@ on:
 
 env:
   FLUTTER_VERSION: "3.24.0"
-  VERSION_TAG: "v1.0.0"
+  VERSION_TAG: "v2.0.0"
 
 jobs:
   # iOS 构建
